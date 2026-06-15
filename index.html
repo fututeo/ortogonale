@@ -441,9 +441,11 @@ const firebaseConfig = {
 let fbApp=null, fbDb=null, fbAuth=null, fbUid=null;
 let fbReady=false;
 
+// Chiave localStorage per l'UID persistente
+const UID_KEY='ortogonale_uid';
+
 function initFirebase(){
   return new Promise(res=>{
-    // Carica Firebase dinamicamente
     const s1=document.createElement('script');
     s1.src='https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js';
     s1.onload=()=>{
@@ -454,7 +456,6 @@ function initFirebase(){
         s3.src='https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js';
         s3.onload=async()=>{
           try{
-            // Controlla se la config è stata sostituita
             if(firebaseConfig.apiKey.startsWith('INSERISCI')){
               console.warn('Firebase non configurato — uso solo locale');
               fbReady=false; res(false); return;
@@ -462,13 +463,38 @@ function initFirebase(){
             fbApp=firebase.initializeApp(firebaseConfig);
             fbAuth=firebase.auth();
             fbDb=firebase.firestore();
-            // Login anonimo — ogni dispositivo ha il suo UID stabile
-            await new Promise((r2,rj)=>{
+
+            // ── UID stabile: lo salviamo in localStorage e lo riusiamo sempre ──
+            // Così anche se Firebase crea una nuova sessione anonima,
+            // usiamo sempre lo stesso UID per accedere ai dati
+            const savedUid=localStorage.getItem(UID_KEY);
+
+            await new Promise((r2)=>{
               fbAuth.onAuthStateChanged(async user=>{
-                if(user){ fbUid=user.uid; }
-                else{
+                if(user){
+                  // Utente già autenticato in questa sessione browser
+                  fbUid=user.uid;
+                  // Se l'UID in localStorage è diverso (es. browser nuovo),
+                  // usiamo quello salvato e migriamo i dati
+                  if(savedUid && savedUid!==user.uid){
+                    // Preferiamo l'UID salvato — è quello con i dati
+                    fbUid=savedUid;
+                  } else {
+                    localStorage.setItem(UID_KEY, user.uid);
+                    fbUid=user.uid;
+                  }
+                } else {
+                  // Nessuna sessione attiva — login anonimo
                   const u=await fbAuth.signInAnonymously();
-                  fbUid=u.user.uid;
+                  if(savedUid){
+                    // Abbiamo già un UID salvato: usiamo quello per i dati
+                    // (il nuovo UID anonimo Firebase lo ignoriamo per i dati)
+                    fbUid=savedUid;
+                  } else {
+                    // Prima volta: salviamo il nuovo UID
+                    fbUid=u.user.uid;
+                    localStorage.setItem(UID_KEY, fbUid);
+                  }
                 }
                 fbReady=true; r2();
               });
@@ -476,6 +502,9 @@ function initFirebase(){
             res(true);
           }catch(e){
             console.warn('Firebase init fallito:',e.message);
+            // Fallback: usa UID salvato localmente anche senza Firebase
+            const savedUid=localStorage.getItem(UID_KEY);
+            if(savedUid) fbUid=savedUid;
             fbReady=false; res(false);
           }
         };
@@ -592,57 +621,67 @@ function showSyncBadge(ok){
 
 async function loadData(){
   await openIDB();
-  let loaded=false;
 
-  // 1. Prova Firebase (dati più aggiornati se multi-dispositivo)
-  if(fbReady){
-    const cloud=await fbLoad('veggies');
-    if(cloud){
-      veggies=cloud.veggies||[];
-      nid=cloud.nid||10; nuid=cloud.nuid||20;
-      await idbSet('veggies',JSON.stringify(cloud)); // aggiorna cache locale
-      loaded=true; showSyncBadge(true);
+  // 1. Carica SUBITO da IndexedDB (locale, istantaneo — nessuna attesa di rete)
+  let loadedLocally=false;
+  try{
+    const raw=await idbGet('veggies');
+    if(raw){
+      const c=JSON.parse(raw);
+      veggies=c.veggies||[];
+      nid=c.nid||10; nuid=c.nuid||20;
+      loadedLocally=true;
     }
-  }
+  }catch(e){}
 
-  // 2. Fallback IndexedDB locale
-  if(!loaded){
-    try{
-      const raw=await idbGet('veggies');
-      if(raw){ const c=JSON.parse(raw); veggies=c.veggies||[]; nid=c.nid||10; nuid=c.nuid||20; loaded=true; }
-    }catch(e){}
-  }
-
-  // 3. Fallback localStorage (migrazione da versione precedente)
-  if(!loaded){
+  // 2. Migrazione da localStorage se IndexedDB è vuoto
+  if(!loadedLocally){
     try{
       const ls=localStorage.getItem('orto_veggies_v1');
-      if(ls){ veggies=JSON.parse(ls); }
+      if(ls){ veggies=JSON.parse(ls); loadedLocally=true; }
       else{ veggies=JSON.parse(JSON.stringify(DEMO)); }
     }catch(e){ veggies=JSON.parse(JSON.stringify(DEMO)); }
+  }
+
+  // 3. Sincronizza da Firebase IN BACKGROUND (non blocca il caricamento)
+  if(fbReady){
+    fbLoad('veggies').then(async cloud=>{
+      if(cloud && cloud.veggies && cloud.veggies.length>0){
+        veggies=cloud.veggies;
+        nid=cloud.nid||nid; nuid=cloud.nuid||nuid;
+        await idbSet('veggies',JSON.stringify(cloud));
+        renderVeggies();
+        showSyncBadge(true);
+      }
+    }).catch(()=>{});
   }
 }
 
 async function loadStoria(){
-  let loaded=false;
+  // 1. Carica SUBITO da IndexedDB
+  let loadedLocally=false;
+  try{
+    const raw=await idbGet('storia');
+    if(raw){ storia=JSON.parse(raw); loadedLocally=true; }
+  }catch(e){}
 
-  if(fbReady){
-    const cloud=await fbLoad('storia');
-    if(cloud){ storia=cloud; await idbSet('storia',JSON.stringify(cloud)); loaded=true; }
-  }
-
-  if(!loaded){
-    try{
-      const raw=await idbGet('storia');
-      if(raw){ storia=JSON.parse(raw); loaded=true; }
-    }catch(e){}
-  }
-
-  if(!loaded){
+  // 2. Migrazione da localStorage
+  if(!loadedLocally){
     try{
       const ls=localStorage.getItem('orto_storia_v1');
-      if(ls) storia=JSON.parse(ls);
+      if(ls){ storia=JSON.parse(ls); }
     }catch(e){}
+  }
+
+  // 3. Sincronizza da Firebase IN BACKGROUND
+  if(fbReady){
+    fbLoad('storia').then(async cloud=>{
+      if(cloud){
+        storia=cloud;
+        await idbSet('storia',JSON.stringify(cloud));
+        showSyncBadge(true);
+      }
+    }).catch(()=>{});
   }
 }
 
