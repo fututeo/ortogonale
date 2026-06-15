@@ -441,82 +441,89 @@ const firebaseConfig = {
 let fbApp=null, fbDb=null, fbAuth=null, fbUid=null;
 let fbReady=false;
 
-// Chiave localStorage per l'UID persistente
-const UID_KEY='ortogonale_uid';
-
 function initFirebase(){
   return new Promise(res=>{
-    const s1=document.createElement('script');
-    s1.src='https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js';
-    s1.onload=()=>{
-      const s2=document.createElement('script');
-      s2.src='https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js';
-      s2.onload=()=>{
-        const s3=document.createElement('script');
-        s3.src='https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js';
-        s3.onload=async()=>{
-          try{
-            if(firebaseConfig.apiKey.startsWith('INSERISCI')){
-              console.warn('Firebase non configurato — uso solo locale');
-              fbReady=false; res(false); return;
-            }
-            fbApp=firebase.initializeApp(firebaseConfig);
-            fbAuth=firebase.auth();
-            fbDb=firebase.firestore();
+    const load=(src)=>new Promise((r,rj)=>{const s=document.createElement('script');s.src=src;s.onload=r;s.onerror=rj;document.head.appendChild(s);});
+    load('https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js')
+    .then(()=>load('https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js'))
+    .then(()=>load('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js'))
+    .then(async()=>{
+      try{
+        if(firebaseConfig.apiKey.startsWith('INSERISCI')){
+          console.warn('Firebase non configurato');
+          fbReady=false; res(false); return;
+        }
+        fbApp=firebase.initializeApp(firebaseConfig);
+        fbAuth=firebase.auth();
+        // Persiste la sessione anche dopo chiusura browser
+        await fbAuth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
+        fbDb=firebase.firestore();
 
-            // ── UID stabile: lo salviamo in localStorage e lo riusiamo sempre ──
-            // Così anche se Firebase crea una nuova sessione anonima,
-            // usiamo sempre lo stesso UID per accedere ai dati
-            const savedUid=localStorage.getItem(UID_KEY);
-
-            await new Promise((r2)=>{
-              fbAuth.onAuthStateChanged(async user=>{
-                if(user){
-                  // Utente già autenticato in questa sessione browser
-                  fbUid=user.uid;
-                  // Se l'UID in localStorage è diverso (es. browser nuovo),
-                  // usiamo quello salvato e migriamo i dati
-                  if(savedUid && savedUid!==user.uid){
-                    // Preferiamo l'UID salvato — è quello con i dati
-                    fbUid=savedUid;
-                  } else {
-                    localStorage.setItem(UID_KEY, user.uid);
-                    fbUid=user.uid;
-                  }
-                } else {
-                  // Nessuna sessione attiva — login anonimo
-                  const u=await fbAuth.signInAnonymously();
-                  if(savedUid){
-                    // Abbiamo già un UID salvato: usiamo quello per i dati
-                    // (il nuovo UID anonimo Firebase lo ignoriamo per i dati)
-                    fbUid=savedUid;
-                  } else {
-                    // Prima volta: salviamo il nuovo UID
-                    fbUid=u.user.uid;
-                    localStorage.setItem(UID_KEY, fbUid);
-                  }
-                }
-                fbReady=true; r2();
-              });
-            });
-            res(true);
-          }catch(e){
-            console.warn('Firebase init fallito:',e.message);
-            // Fallback: usa UID salvato localmente anche senza Firebase
-            const savedUid=localStorage.getItem(UID_KEY);
-            if(savedUid) fbUid=savedUid;
-            fbReady=false; res(false);
+        // Ascolta i cambiamenti di stato auth
+        fbAuth.onAuthStateChanged(async user=>{
+          if(user){
+            fbUid=user.uid;
+            fbReady=true;
+            showLoginScreen(false);
+            showSyncBadge(true, user.displayName||user.email||'Connesso');
+            // Carica i dati dal cloud per questo utente
+            await syncFromCloud();
+            renderVeggies();
+          } else {
+            fbUid=null;
+            fbReady=false;
+            showLoginScreen(true);
+            showSyncBadge(false);
           }
-        };
-        s3.onerror=()=>{fbReady=false;res(false);};
-        document.head.appendChild(s3);
-      };
-      s2.onerror=()=>{fbReady=false;res(false);};
-      document.head.appendChild(s2);
-    };
-    s1.onerror=()=>{fbReady=false;res(false);};
-    document.head.appendChild(s1);
+        });
+        res(true);
+      }catch(e){
+        console.warn('Firebase init fallito:',e.message);
+        fbReady=false; res(false);
+      }
+    }).catch(()=>{fbReady=false;res(false);});
   });
+}
+
+function loginGoogle(){
+  const provider=new firebase.auth.GoogleAuthProvider();
+  fbAuth.signInWithPopup(provider).catch(e=>{
+    // Su mobile signInWithPopup può essere bloccato — usa redirect
+    fbAuth.signInWithRedirect(provider);
+  });
+}
+
+function logout(){
+  if(!confirm('Vuoi disconnetterti? I dati restano salvati sul cloud.')) return;
+  fbAuth.signOut().then(()=>{
+    showLoginScreen(true);
+    showSyncBadge(false);
+  });
+}
+
+// Schermata di login sovrapposta
+function showLoginScreen(show){
+  let overlay=document.getElementById('login-overlay');
+  if(show){
+    if(overlay) return; // già visibile
+    overlay=document.createElement('div');
+    overlay.id='login-overlay';
+    overlay.style.cssText='position:fixed;inset:0;background:rgba(245,245,245,.98);z-index:50;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px;text-align:center;';
+    overlay.innerHTML=`
+      <div style="font-family:\'Open Sans\',sans-serif;font-size:28px;font-weight:700;color:#3B6D11;letter-spacing:.04em;margin-bottom:8px;">ORTOGONALE</div>
+      <div style="font-size:14px;color:#888;margin-bottom:40px;line-height:1.5;">Il tuo diario dell\'orto.<br>Accedi per sincronizzare i dati su tutti i tuoi dispositivi.</div>
+      <button onclick="loginGoogle()" style="display:flex;align-items:center;gap:12px;padding:14px 24px;background:#fff;border:1.5px solid #ddd;border-radius:12px;font-size:15px;font-family:inherit;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.08);color:#111;margin-bottom:16px;width:100%;max-width:280px;justify-content:center;">
+        <svg width="20" height="20" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+        Accedi con Google
+      </button>
+      <div style="font-size:11px;color:#aaa;max-width:260px;line-height:1.6;">
+        I tuoi dati vengono salvati in modo sicuro e sono accessibili solo con il tuo account Google.
+      </div>
+    `;
+    document.body.appendChild(overlay);
+  } else {
+    if(overlay) overlay.remove();
+  }
 }
 
 // Ref Firestore per l'utente corrente
@@ -611,12 +618,34 @@ async function _doSave(key){
 async function saveData(){ schedSave('veggies'); }
 async function saveStoria(){ schedSave('storia'); }
 
-// ── Indicatore sync ──
-function showSyncBadge(ok){
+// ── Indicatore sync + logout ──
+function showSyncBadge(ok, userName){
   const b=document.getElementById('sync-badge');
   if(!b) return;
-  b.textContent=ok?'☁️ Sincronizzato':'💾 Locale';
-  b.style.color=ok?'rgba(255,255,255,.9)':'rgba(255,255,255,.5)';
+  if(ok){
+    const nome=userName?(' · '+userName.split(' ')[0]):'';
+    b.innerHTML=`☁️ Sync${nome} <span onclick="logout()" style="cursor:pointer;opacity:.7;margin-left:4px;" title="Disconnetti">✕</span>`;
+    b.style.color='rgba(255,255,255,.95)';
+  } else {
+    b.innerHTML='💾 Locale';
+    b.style.color='rgba(255,255,255,.5)';
+  }
+}
+
+// Carica dati dal cloud e aggiorna locale
+async function syncFromCloud(){
+  try{
+    const [cloudV, cloudS] = await Promise.all([fbLoad('veggies'), fbLoad('storia')]);
+    if(cloudV && cloudV.veggies){
+      veggies=cloudV.veggies;
+      nid=cloudV.nid||nid; nuid=cloudV.nuid||nuid;
+      await idbSet('veggies', JSON.stringify(cloudV));
+    }
+    if(cloudS){
+      storia=cloudS;
+      await idbSet('storia', JSON.stringify(cloudS));
+    }
+  }catch(e){ console.warn('syncFromCloud error:',e); }
 }
 
 async function loadData(){
@@ -643,18 +672,8 @@ async function loadData(){
     }catch(e){ veggies=JSON.parse(JSON.stringify(DEMO)); }
   }
 
-  // 3. Sincronizza da Firebase IN BACKGROUND (non blocca il caricamento)
-  if(fbReady){
-    fbLoad('veggies').then(async cloud=>{
-      if(cloud && cloud.veggies && cloud.veggies.length>0){
-        veggies=cloud.veggies;
-        nid=cloud.nid||nid; nuid=cloud.nuid||nuid;
-        await idbSet('veggies',JSON.stringify(cloud));
-        renderVeggies();
-        showSyncBadge(true);
-      }
-    }).catch(()=>{});
-  }
+  // Firebase sync viene gestito da onAuthStateChanged → syncFromCloud()
+  // Non serve sincronizzare qui
 }
 
 async function loadStoria(){
@@ -672,17 +691,7 @@ async function loadStoria(){
       if(ls){ storia=JSON.parse(ls); }
     }catch(e){}
   }
-
-  // 3. Sincronizza da Firebase IN BACKGROUND
-  if(fbReady){
-    fbLoad('storia').then(async cloud=>{
-      if(cloud){
-        storia=cloud;
-        await idbSet('storia',JSON.stringify(cloud));
-        showSyncBadge(true);
-      }
-    }).catch(()=>{});
-  }
+  // Firebase sync viene gestito da onAuthStateChanged → syncFromCloud()
 }
 
 function showSaveToast(){
@@ -704,12 +713,12 @@ let storiaNextId=1;
 
 // ── Avvio ──
 (async()=>{
-  // Avvia Firebase in parallelo all'apertura del DB locale
-  const [,] = await Promise.all([openIDB(), initFirebase()]);
+  // 1. Apri IndexedDB e carica dati locali — istantaneo, non aspetta Firebase
+  await openIDB();
   await loadData();
   await loadStoria();
 
-  // Migra storia vecchio formato → capitoli
+  // Migrazione storia vecchio formato → capitoli
   if(storia.desc||storia.photos?.length){
     if(!storia.capitoli) storia.capitoli=[];
     if(storia.capitoli.length===0){
@@ -729,8 +738,11 @@ let storiaNextId=1;
     if(c.id){const n=parseInt(c.id.replace('cap',''));if(n>=storiaNextId)storiaNextId=n+1;}
   });
 
-  showSyncBadge(fbReady);
+  // Mostra app con dati locali subito
   renderVeggies();
+
+  // 2. Avvia Firebase in background — onAuthStateChanged gestirà il resto
+  initFirebase();
 })();
 
 // ── GANTT ──
