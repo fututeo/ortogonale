@@ -1210,7 +1210,7 @@ function goToDetail(id){
 function newCapId(){return 'c'+Date.now();}
 
 function renderStoria(){
-  storiaEditCap=null;
+  // NON azzerare storiaEditCap qui — viene settato da editCap() prima della chiamata
   const caps=storia.capitoli||[];
   const totFoto=caps.reduce((s,c)=>s+(c.photos||[]).length,0);
 
@@ -1220,40 +1220,73 @@ function renderStoria(){
         <img src="${f}" alt="foto">
         <button class="storia-photo-del" onclick="event.stopPropagation();delCapPhoto(${ci},${fi})">×</button>
       </div>`).join('');
+    const isEditing=(storiaEditCap===c.id);
     return `
     <div class="storia-cap" id="scap-${c.id}">
-      <!-- numero capitolo + azioni -->
+      <!-- barra numero + azioni -->
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-        <div style="font-size:10px;font-weight:700;color:#3B6D11;text-transform:uppercase;letter-spacing:.06em;background:#EAF3DE;padding:3px 8px;border-radius:20px;">Capitolo ${ci+1}</div>
+        <div style="font-size:10px;font-weight:700;color:#3B6D11;text-transform:uppercase;letter-spacing:.06em;background:#EAF3DE;padding:3px 8px;border-radius:20px;">
+          ${isEditing?'Modifica capitolo':'Capitolo '+(ci+1)}
+        </div>
         <div style="margin-left:auto;display:flex;gap:6px;">
-          ${ci>0?`<button onclick="moveCapSu(${ci})" title="Sposta su" style="background:none;border:0.5px solid #ddd;border-radius:6px;width:26px;height:26px;cursor:pointer;font-size:13px;">↑</button>`:''}
-          ${ci<caps.length-1?`<button onclick="moveCapGiu(${ci})" title="Sposta giù" style="background:none;border:0.5px solid #ddd;border-radius:6px;width:26px;height:26px;cursor:pointer;font-size:13px;">↓</button>`:''}
-          <button onclick="editCap('${c.id}')" title="Modifica" style="background:none;border:0.5px solid #ddd;border-radius:6px;width:26px;height:26px;cursor:pointer;font-size:12px;color:#3B6D11;"><i class="ti ti-pencil"></i></button>
+          ${!isEditing&&ci>0?`<button onclick="moveCapSu(${ci})" title="Sposta su" style="background:none;border:0.5px solid #ddd;border-radius:6px;width:26px;height:26px;cursor:pointer;font-size:13px;">↑</button>`:''}
+          ${!isEditing&&ci<caps.length-1?`<button onclick="moveCapGiu(${ci})" title="Sposta giù" style="background:none;border:0.5px solid #ddd;border-radius:6px;width:26px;height:26px;cursor:pointer;font-size:13px;">↓</button>`:''}
+          ${!isEditing?`<button onclick="editCap('${c.id}')" title="Modifica" style="background:none;border:0.5px solid #ddd;border-radius:6px;width:26px;height:26px;cursor:pointer;font-size:12px;color:#3B6D11;"><i class="ti ti-pencil"></i></button>`:''}
           <button onclick="delCap('${c.id}')" title="Elimina capitolo" style="background:none;border:0.5px solid #ddd;border-radius:6px;width:26px;height:26px;cursor:pointer;font-size:12px;color:#A32D2D;"><i class="ti ti-trash"></i></button>
         </div>
       </div>
-      <!-- titolo -->
-      <div style="font-size:17px;font-weight:600;color:#111;margin-bottom:8px;">${esc(c.titolo)}</div>
-      <!-- testo -->
-      ${c.testo?`<div style="font-size:14px;color:#333;line-height:1.65;margin-bottom:12px;white-space:pre-wrap;">${esc(c.testo)}</div>`:''}
-      <!-- foto -->
-      ${thumbs?`<div class="storia-photo-grid" style="margin-bottom:8px;">${thumbs}</div>`:''}
-      <!-- aggiungi foto al capitolo -->
-      <div style="display:flex;gap:6px;margin-bottom:4px;">
-        <div class="storia-add-btn" style="font-size:10px;">
-          <i class="ti ti-camera"></i><span>Fotocamera</span>
-          <input type="file" accept="image/*" capture="environment" onchange="addCapPhoto(event,'${c.id}')">
+
+      ${isEditing ? `
+        <!-- MODALITÀ EDITING -->
+        <div style="margin-bottom:8px;">
+          <label style="font-size:11px;color:#888;display:block;margin-bottom:3px;">Titolo</label>
+          <input id="ecap-titolo-${c.id}" type="text" value="${esc(c.titolo)}"
+                 style="width:100%;padding:7px 10px;border:1.5px solid #3B6D11;border-radius:8px;font-size:14px;font-weight:600;font-family:inherit;box-sizing:border-box;"
+                 onkeydown="if(event.key==='Enter')document.getElementById('ecap-testo-${c.id}').focus()">
         </div>
-        <div class="storia-add-btn" style="font-size:10px;">
-          <i class="ti ti-photo"></i><span>Galleria</span>
-          <input type="file" accept="image/*" multiple onchange="addCapPhoto(event,'${c.id}')">
+        <div style="margin-bottom:10px;">
+          <label style="font-size:11px;color:#888;display:block;margin-bottom:3px;">Testo</label>
+          <textarea id="ecap-testo-${c.id}"
+                    style="width:100%;padding:8px 10px;border:1.5px solid #3B6D11;border-radius:8px;font-size:14px;font-family:inherit;resize:none;min-height:120px;box-sizing:border-box;"
+                    placeholder="Scrivi il testo di questo capitolo…">${esc(c.testo||'')}</textarea>
         </div>
-        ${(c.photos||[]).length>0?`
-        <button onclick="openIgModal(${JSON.stringify(c.photos||[]).replace(/"/g,'&quot;')},'${esc(c.titolo)}')"
-          style="flex:1;border:0.5px solid #E1306C;border-radius:8px;background:#fff0f5;color:#E1306C;font-size:11px;font-family:inherit;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;padding:0 8px;">
-          <i class="ti ti-brand-instagram"></i> Post IG
-        </button>`:''}
-      </div>
+        <div style="display:flex;gap:8px;margin-bottom:10px;">
+          <button onclick="svCap('${c.id}')" style="flex:2;padding:9px;background:#3B6D11;color:white;border:none;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer;font-family:inherit;">✓ Salva</button>
+          <button onclick="annullaCap()" style="flex:1;padding:9px;background:#f5f5f5;color:#666;border:0.5px solid #ddd;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit;">Annulla</button>
+        </div>
+        <!-- foto in editing -->
+        ${thumbs?`<div class="storia-photo-grid" style="margin-bottom:8px;">${thumbs}</div>`:''}
+        <div style="display:flex;gap:6px;">
+          <div class="storia-add-btn" style="font-size:10px;">
+            <i class="ti ti-camera"></i><span>Fotocamera</span>
+            <input type="file" accept="image/*" capture="environment" onchange="addCapPhoto(event,'${c.id}')">
+          </div>
+          <div class="storia-add-btn" style="font-size:10px;">
+            <i class="ti ti-photo"></i><span>Galleria</span>
+            <input type="file" accept="image/*" multiple onchange="addCapPhoto(event,'${c.id}')">
+          </div>
+        </div>
+      ` : `
+        <!-- MODALITÀ VISUALIZZAZIONE -->
+        <div style="font-size:17px;font-weight:600;color:#111;margin-bottom:8px;">${esc(c.titolo)}</div>
+        ${c.testo?`<div style="font-size:14px;color:#333;line-height:1.65;margin-bottom:12px;white-space:pre-wrap;">${esc(c.testo)}</div>`:'<div style="font-size:13px;color:#aaa;font-style:italic;margin-bottom:10px;">Nessun testo — premi ✏️ per aggiungere</div>'}
+        ${thumbs?`<div class="storia-photo-grid" style="margin-bottom:8px;">${thumbs}</div>`:''}
+        <div style="display:flex;gap:6px;margin-bottom:4px;">
+          <div class="storia-add-btn" style="font-size:10px;">
+            <i class="ti ti-camera"></i><span>Fotocamera</span>
+            <input type="file" accept="image/*" capture="environment" onchange="addCapPhoto(event,'${c.id}')">
+          </div>
+          <div class="storia-add-btn" style="font-size:10px;">
+            <i class="ti ti-photo"></i><span>Galleria</span>
+            <input type="file" accept="image/*" multiple onchange="addCapPhoto(event,'${c.id}')">
+          </div>
+          ${(c.photos||[]).length>0?`
+          <button onclick="openIgModal(${JSON.stringify(c.photos||[]).replace(/"/g,'&quot;')},'${esc(c.titolo)}')"
+            style="flex:1;border:0.5px solid #E1306C;border-radius:8px;background:#fff0f5;color:#E1306C;font-size:11px;font-family:inherit;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;padding:0 8px;">
+            <i class="ti ti-brand-instagram"></i> Post IG
+          </button>`:''}
+        </div>
+      `}
     </div>`;
   }).join('<div style="height:1px;background:#eee;margin:16px 0;"></div>');
 
@@ -1301,48 +1334,45 @@ function renderStoria(){
 
 // ── Modifica capitolo — modale inline ──
 function addCap(){
-  storia.capitoli.push({id:newCapId(),titolo:'Nuovo capitolo',testo:'',photos:[]});
+  const newCap={id:newCapId(),titolo:'Nuovo capitolo',testo:'',photos:[]};
+  storia.capitoli.push(newCap);
+  storiaEditCap=newCap.id;
   saveStoria();
   renderStoria();
-  // apri subito in editing l'ultimo
-  editCap(storia.capitoli[storia.capitoli.length-1].id);
+  setTimeout(()=>{
+    document.getElementById('scap-'+newCap.id)?.scrollIntoView({behavior:'smooth',block:'start'});
+    document.getElementById('ecap-titolo-'+newCap.id)?.focus();
+  },80);
 }
 
 function editCap(cid){
-  const c=storia.capitoli.find(x=>x.id===cid);
-  if(!c) return;
+  // Chiudi eventuale altro editing aperto
+  if(storiaEditCap && storiaEditCap!==cid){ storiaEditCap=null; }
   storiaEditCap=cid;
-  const el=document.getElementById('scap-'+cid);
-  if(!el) return;
-  el.innerHTML=`
-    <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;">
-      <div style="font-size:10px;font-weight:700;color:#3B6D11;text-transform:uppercase;background:#EAF3DE;padding:3px 8px;border-radius:20px;">Modifica capitolo</div>
-    </div>
-    <div style="margin-bottom:8px;">
-      <label style="font-size:11px;color:#888;display:block;margin-bottom:3px;">Titolo</label>
-      <input id="ecap-titolo" type="text" value="${esc(c.titolo)}"
-             style="width:100%;padding:7px 10px;border:1.5px solid #3B6D11;border-radius:8px;font-size:14px;font-weight:600;font-family:inherit;box-sizing:border-box;">
-    </div>
-    <div style="margin-bottom:10px;">
-      <label style="font-size:11px;color:#888;display:block;margin-bottom:3px;">Testo</label>
-      <textarea id="ecap-testo"
-                style="width:100%;padding:8px 10px;border:1.5px solid #3B6D11;border-radius:8px;font-size:14px;font-family:inherit;resize:none;min-height:120px;box-sizing:border-box;"
-                placeholder="Scrivi il testo di questo capitolo…">${esc(c.testo||'')}</textarea>
-    </div>
-    <div style="display:flex;gap:8px;margin-bottom:4px;">
-      <button onclick="svCap('${cid}')" style="flex:2;padding:9px;background:#3B6D11;color:white;border:none;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer;font-family:inherit;">✓ Salva</button>
-      <button onclick="renderStoria()" style="flex:1;padding:9px;background:#f5f5f5;color:#666;border:0.5px solid #ddd;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit;">Annulla</button>
-      <button onclick="renderStoria();setTimeout(()=>delCap('${cid}'),50)" title="Elimina capitolo" style="padding:9px 11px;background:#FCEBEB;color:#A32D2D;border:0.5px solid #f5c6cb;border-radius:8px;font-size:14px;cursor:pointer;"><i class="ti ti-trash"></i></button>
-    </div>`;
-  document.getElementById('ecap-titolo').focus();
+  renderStoria();
+  // Focus sul titolo dopo il render
+  setTimeout(()=>{
+    const inp=document.getElementById('ecap-titolo-'+cid);
+    if(inp){ inp.focus(); inp.setSelectionRange(inp.value.length,inp.value.length); }
+  },50);
+}
+
+function annullaCap(){
+  storiaEditCap=null;
+  renderStoria();
 }
 
 function svCap(cid){
   const c=storia.capitoli.find(x=>x.id===cid);
   if(!c) return;
-  c.titolo=document.getElementById('ecap-titolo').value.trim()||'Senza titolo';
-  c.testo=document.getElementById('ecap-testo').value.trim();
-  saveStoria(); renderStoria();
+  const titoloEl=document.getElementById('ecap-titolo-'+cid);
+  const testoEl=document.getElementById('ecap-testo-'+cid);
+  if(!titoloEl||!testoEl) return;
+  c.titolo=titoloEl.value.trim()||'Senza titolo';
+  c.testo=testoEl.value.trim();
+  storiaEditCap=null;
+  saveStoria();
+  renderStoria();
 }
 
 function delCap(cid){
