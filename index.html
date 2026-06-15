@@ -1,0 +1,1481 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Il mio orto</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.0.0/tabler-icons.min.css">
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f5;display:flex;justify-content:center;}
+.app{max-width:390px;width:100%;background:#fff;min-height:100vh;}
+.header{background:#3B6D11;padding:20px 16px 16px;color:white;}
+.header h1{font-size:20px;font-weight:500;}
+.header p{font-size:13px;opacity:.8;margin-top:2px;}
+.nav{display:flex;border-bottom:0.5px solid #e0e0e0;background:#fff;}
+.nav button{flex:1;padding:10px 2px;font-size:10px;background:none;border:none;cursor:pointer;color:#666;border-bottom:2px solid transparent;font-family:inherit;}
+.nav button.active{color:#3B6D11;border-bottom:2px solid #3B6D11;font-weight:500;}
+.content{padding:16px;}
+.section{display:none;}
+.section.active{display:block;}
+.add-btn{width:100%;padding:10px;background:#3B6D11;color:white;border:none;border-radius:10px;font-size:14px;cursor:pointer;font-family:inherit;margin-bottom:16px;display:flex;align-items:center;justify-content:center;gap:6px;}
+/* Card */
+.veggie-card{background:#fff;border:0.5px solid #e0e0e0;border-radius:12px;padding:12px 14px;margin-bottom:10px;cursor:pointer;}
+.veggie-header{display:flex;align-items:center;gap:10px;}
+.veggie-icon{width:40px;height:40px;border-radius:50%;background:#EAF3DE;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;overflow:hidden;}
+.veggie-icon img{width:100%;height:100%;object-fit:cover;border-radius:50%;}
+.veggie-info{flex:1;min-width:0;}
+.veggie-name{font-size:15px;font-weight:500;}
+.veggie-date{font-size:12px;color:#666;margin-top:2px;}
+.veggie-status{font-size:11px;padding:3px 8px;border-radius:20px;font-weight:500;white-space:nowrap;}
+.status-germoglio{background:#EAF3DE;color:#27500A;}
+.status-crescita{background:#FAEEDA;color:#633806;}
+.status-raccolta{background:#E1F5EE;color:#085041;}
+.harvest-badge{display:flex;align-items:center;gap:5px;margin-top:8px;font-size:12px;color:#666;}
+.harvest-badge.soon{color:#BA7517;}
+.harvest-badge.ready{color:#085041;font-weight:500;}
+.progress-bar{margin-top:10px;background:#f0f0f0;border-radius:4px;height:6px;overflow:hidden;}
+.progress-fill{height:100%;border-radius:4px;background:#639922;}
+/* Modali */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:10;align-items:flex-end;justify-content:center;}
+.modal-bg.open{display:flex;}
+.modal{background:#fff;border-radius:20px 20px 0 0;padding:20px 16px 28px;width:100%;max-width:390px;max-height:92vh;overflow-y:auto;}
+.modal h2{font-size:16px;font-weight:500;margin-bottom:4px;}
+.modal-subtitle{font-size:12px;color:#666;margin-bottom:16px;}
+.field{margin-bottom:12px;}
+.field label{font-size:12px;color:#666;display:block;margin-bottom:4px;}
+.field input,.field select,.field textarea{width:100%;padding:8px 10px;border:0.5px solid #ccc;border-radius:8px;font-size:14px;font-family:inherit;background:#fff;color:#111;}
+.field textarea{height:72px;resize:none;}
+.field-readonly{width:100%;padding:8px 10px;border:0.5px solid #e0e0e0;border-radius:8px;font-size:14px;background:#f5f5f5;color:#666;}
+.field-hint{font-size:11px;color:#aaa;margin-top:3px;}
+.modal-sec{font-size:12px;font-weight:600;color:#666;text-transform:uppercase;letter-spacing:.05em;margin:16px 0 10px;padding-top:12px;border-top:0.5px solid #e0e0e0;}
+.modal-btns{display:flex;gap:8px;margin-top:10px;}
+.modal-btns button{flex:1;padding:10px;border-radius:8px;font-size:14px;cursor:pointer;font-family:inherit;border:none;}
+.btn-cancel{background:#f5f5f5;border:0.5px solid #ddd !important;color:#666;}
+.btn-save{background:#3B6D11;color:white;}
+/* Foto source */
+.photo-source-row{display:flex;gap:8px;margin-bottom:8px;}
+.photo-source-btn{flex:1;border:0.5px solid #ccc;border-radius:8px;padding:12px 8px;display:flex;flex-direction:column;align-items:center;gap:5px;background:#f5f5f5;font-size:12px;font-family:inherit;cursor:pointer;position:relative;overflow:hidden;color:#111;}
+.photo-source-btn i{font-size:22px;color:#3B6D11;}
+.photo-source-btn input[type="file"]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;font-size:0;}
+.photos-preview{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;}
+.preview-wrap{position:relative;width:60px;height:60px;}
+.preview-wrap img{width:100%;height:100%;object-fit:cover;border-radius:8px;display:block;}
+.preview-del{position:absolute;top:-5px;right:-5px;width:18px;height:18px;background:#A32D2D;border:none;border-radius:50%;color:white;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;}
+/* Dettaglio */
+.back-btn{background:none;border:none;color:#3B6D11;font-size:14px;cursor:pointer;font-family:inherit;padding:0;margin-bottom:12px;display:flex;align-items:center;gap:4px;}
+.detail-header{display:flex;align-items:center;gap:12px;margin-bottom:16px;}
+.detail-icon{width:52px;height:52px;border-radius:50%;background:#EAF3DE;display:flex;align-items:center;justify-content:center;font-size:26px;flex-shrink:0;cursor:pointer;position:relative;overflow:hidden;}
+.detail-icon input[type="file"]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;font-size:0;}
+.detail-icon-img{width:100%;height:100%;object-fit:cover;border-radius:50%;display:block;}
+.detail-name-wrap{flex:1;}
+.detail-name{font-size:18px;font-weight:500;cursor:pointer;display:flex;align-items:center;gap:5px;}
+.detail-name i{font-size:12px;color:#3B6D11;opacity:.6;}
+.detail-name-input{font-size:16px;font-weight:500;font-family:inherit;border:1px solid #3B6D11;border-radius:8px;padding:4px 8px;width:100%;display:none;}
+.detail-sub{font-size:12px;color:#666;cursor:pointer;display:flex;align-items:center;gap:4px;}
+.detail-sub i{font-size:10px;color:#3B6D11;opacity:.6;}
+.detail-sub-input{font-size:12px;font-family:inherit;border:1px solid #3B6D11;border-radius:8px;padding:3px 6px;width:100%;display:none;margin-top:2px;}
+.detail-actions{display:flex;gap:8px;margin-bottom:16px;}
+.detail-actions button{flex:1;padding:8px;border:none;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:4px;}
+.btn-green-soft{background:#EAF3DE;color:#27500A;}
+.btn-red-soft{background:#FCEBEB;color:#A32D2D;}
+.harvest-info-box{background:#f5f5f5;border-radius:8px;padding:12px 14px;margin-bottom:12px;display:flex;align-items:center;gap:10px;}
+.harvest-days{font-size:22px;font-weight:500;}
+.harvest-sub{font-size:12px;color:#666;}
+/* Fields grid */
+.fields-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px;}
+.field-card{background:#f5f5f5;border-radius:8px;padding:10px 12px;cursor:pointer;border:1px solid transparent;}
+.field-card:hover{border-color:#ccc;}
+.field-card-label{font-size:10px;color:#aaa;text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px;display:flex;align-items:center;gap:4px;}
+.field-card-label i{font-size:10px;color:#3B6D11;opacity:.7;}
+.field-card-value{font-size:13px;font-weight:500;word-break:break-word;}
+.field-card-value.empty{color:#aaa;font-weight:400;font-style:italic;}
+.field-card.full-width{grid-column:1/-1;}
+.field-card.highlight{background:#EAF3DE;border-color:transparent !important;cursor:default;}
+.field-card.highlight .field-card-label{color:#4a8520;}
+.field-card.highlight .field-card-value{color:#27500A;}
+.field-card-edit{display:none;margin-top:4px;}
+.field-card-edit input,.field-card-edit textarea{width:100%;padding:4px 6px;border:1px solid #3B6D11;border-radius:8px;font-size:13px;font-family:inherit;}
+.field-card-edit textarea{height:56px;resize:none;}
+.field-card-edit-btns{display:flex;gap:4px;margin-top:4px;}
+.field-card-edit-btns button{flex:1;padding:4px;border:none;border-radius:8px;font-size:11px;cursor:pointer;font-family:inherit;}
+/* Foto griglia */
+.photo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:16px;}
+.photo-thumb{aspect-ratio:1;border-radius:8px;overflow:hidden;cursor:pointer;position:relative;}
+.photo-thumb img{width:100%;height:100%;object-fit:cover;display:block;}
+.photo-thumb .photo-date{position:absolute;bottom:0;left:0;right:0;background:rgba(0,0,0,.5);color:white;font-size:9px;padding:2px 4px;text-align:center;}
+.photo-add-cell{aspect-ratio:1;border-radius:8px;border:1.5px dashed #ccc;background:#f5f5f5;position:relative;overflow:hidden;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;cursor:pointer;color:#aaa;font-size:10px;}
+.photo-add-cell i{font-size:22px;color:#3B6D11;}
+.photo-add-cell input[type="file"]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;font-size:0;}
+.section-label{font-size:13px;font-weight:500;color:#666;margin-bottom:8px;}
+/* Diario */
+.update-list{margin-top:4px;}
+.update-item{padding:10px 0;border-bottom:0.5px solid #eee;}
+.update-item:last-child{border-bottom:none;}
+.update-item-inner{display:flex;gap:8px;align-items:flex-start;}
+.update-date{color:#aaa;min-width:52px;font-size:11px;padding-top:2px;flex-shrink:0;}
+.update-body{flex:1;min-width:0;}
+.update-text{font-size:13px;line-height:1.4;word-break:break-word;}
+.upd-photos-row{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px;}
+.upd-photo-mini{width:58px;height:58px;border-radius:8px;object-fit:cover;cursor:pointer;display:block;}
+.update-actions{display:flex;gap:6px;margin-top:6px;}
+.upd-action-btn{background:#f5f5f5;border:none;cursor:pointer;font-size:11px;font-family:inherit;padding:3px 8px;border-radius:20px;display:flex;align-items:center;gap:3px;color:#666;}
+.edit-panel{background:#f5f5f5;border-radius:8px;padding:12px;margin-top:4px;}
+.edit-panel .field{margin-bottom:8px;}
+.edit-panel .field label{font-size:11px;}
+.edit-panel .field input,.edit-panel .field textarea{font-size:13px;padding:6px 8px;}
+.edit-panel .field textarea{height:60px;}
+.edit-photos-grid{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px;margin-bottom:6px;}
+.edit-photo-wrap{position:relative;width:58px;height:58px;flex-shrink:0;}
+.edit-photo-wrap img{width:100%;height:100%;object-fit:cover;border-radius:8px;display:block;}
+.edit-photo-del{position:absolute;top:-5px;right:-5px;width:18px;height:18px;background:#A32D2D;border:none;border-radius:50%;color:white;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0;}
+.add-photo-row{display:flex;gap:6px;}
+.add-photo-btn{position:relative;padding:6px 10px;border:0.5px solid #ccc;border-radius:8px;background:#fff;font-size:12px;font-family:inherit;color:#666;cursor:pointer;display:flex;align-items:center;gap:4px;overflow:hidden;}
+.add-photo-btn input[type="file"]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;font-size:0;}
+.edit-panel-btns{display:flex;gap:6px;margin-top:8px;}
+.edit-panel-btns button{flex:1;padding:7px;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit;border:none;}
+/* GANTT */
+.gantt-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
+.gantt-nav-title{font-size:14px;font-weight:500;}
+.gantt-nav-btn{background:none;border:0.5px solid #ccc;border-radius:8px;padding:4px 12px;cursor:pointer;font-size:14px;color:#666;font-family:inherit;}
+.gantt-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+.gantt-container{display:inline-block;min-width:100%;}
+.gantt-header{display:flex;margin-bottom:4px;}
+.gantt-lbl-hd{width:82px;flex-shrink:0;}
+.gantt-months-hd{display:flex;flex:1;}
+.gantt-month-hd{font-size:10px;color:#888;border-left:0.5px solid #e0e0e0;padding:2px 0 2px 4px;white-space:nowrap;flex-shrink:0;}
+.gantt-row{display:flex;align-items:center;margin-bottom:10px;}
+.gantt-row-lbl{width:82px;flex-shrink:0;padding-right:8px;}
+.gantt-row-lbl span{display:block;font-size:11px;color:#111;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:74px;}
+.gantt-row-lbl small{font-size:9px;color:#aaa;}
+.gantt-track-wrap{flex:1;position:relative;}
+.gantt-track{height:26px;background:#f0f0f0;border-radius:6px;position:relative;overflow:visible;}
+.gantt-grid-line{position:absolute;top:0;bottom:0;width:0.5px;background:#e0e0e0;pointer-events:none;}
+.gantt-bar{position:absolute;top:0;height:100%;border-radius:6px;display:flex;align-items:center;overflow:hidden;padding:0 5px;min-width:6px;cursor:default;}
+.gantt-bar-label{font-size:9px;font-weight:600;color:white;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;position:relative;z-index:1;}
+.gantt-bar-prog{position:absolute;left:0;top:0;height:100%;border-radius:6px;background:rgba(255,255,255,.2);pointer-events:none;}
+.gantt-today-line{position:absolute;top:-4px;bottom:-4px;width:2px;background:#E53E3E;border-radius:2px;z-index:5;pointer-events:none;}
+.gantt-today-lbl{position:absolute;top:-16px;font-size:9px;color:#E53E3E;font-weight:700;transform:translateX(-50%);white-space:nowrap;}
+.gantt-empty{text-align:center;padding:40px 0;color:#888;font-size:14px;line-height:1.6;}
+.gantt-legend{display:flex;flex-wrap:wrap;gap:10px;margin-top:14px;}
+.gantt-legend-item{display:flex;align-items:center;gap:5px;font-size:11px;color:#666;}
+.gantt-legend-dot{width:12px;height:10px;border-radius:3px;flex-shrink:0;}
+.gantt-tooltip{position:fixed;background:rgba(0,0,0,.8);color:white;font-size:11px;padding:6px 10px;border-radius:8px;pointer-events:none;z-index:100;white-space:nowrap;display:none;}
+/* Consigli */
+.tip{background:#EAF3DE;border-radius:8px;padding:12px;margin-bottom:10px;}
+.tip-title{font-size:13px;font-weight:500;color:#27500A;margin-bottom:4px;}
+.tip-body{font-size:12px;color:#3B6D11;line-height:1.5;}
+/* Lightbox */
+.lightbox{display:none;position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:20;align-items:center;justify-content:center;flex-direction:column;}
+.lightbox.open{display:flex;}
+.lightbox img{max-width:92%;max-height:72vh;border-radius:8px;object-fit:contain;}
+.lightbox-close{position:absolute;top:16px;right:16px;background:rgba(255,255,255,.15);border:none;color:white;border-radius:50%;width:38px;height:38px;font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+.lightbox-caption{color:white;font-size:13px;margin-top:12px;opacity:.75;}
+/* Storia */
+.storia-desc{font-size:14px;color:#333;line-height:1.6;margin-bottom:12px;white-space:pre-wrap;cursor:pointer;min-height:48px;padding:8px;border-radius:8px;border:1px solid transparent;}
+.storia-desc:hover{background:#f5f5f5;border-color:#e0e0e0;}
+.storia-desc-input{width:100%;border:1px solid #3B6D11;border-radius:8px;padding:8px;font-size:14px;font-family:inherit;resize:none;min-height:120px;display:none;color:#111;background:#fff;}
+.storia-photo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:14px;}
+.storia-photo-thumb{aspect-ratio:1;border-radius:8px;overflow:hidden;cursor:pointer;position:relative;}
+.storia-photo-thumb img{width:100%;height:100%;object-fit:cover;display:block;}
+.storia-photo-del{position:absolute;top:4px;right:4px;width:22px;height:22px;background:rgba(0,0,0,.6);border:none;border-radius:50%;color:white;font-size:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;}
+.storia-add-btn{flex:1;border:0.5px solid #ccc;border-radius:8px;padding:10px 8px;display:flex;flex-direction:column;align-items:center;gap:4px;background:#f5f5f5;font-size:11px;font-family:inherit;cursor:pointer;position:relative;overflow:hidden;color:#444;}
+.storia-add-btn i{font-size:20px;color:#3B6D11;}
+.storia-add-btn input[type="file"]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;font-size:0;}
+.cap-card{background:#fff;border:0.5px solid #e8e8e8;border-radius:12px;padding:14px;margin-bottom:14px;}
+/* Scheda tecnica sezioni stile PDF */
+.scheda-section{margin-bottom:16px;}
+.scheda-section-title{font-size:11px;font-weight:700;color:#3B6D11;text-transform:uppercase;letter-spacing:.06em;padding:6px 0 6px;border-bottom:2px solid #EAF3DE;margin-bottom:8px;}
+.scheda-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;}
+.scheda-grid .field-card{padding:8px 10px;}
+.scheda-grid .field-card-label{font-size:9px;}
+.scheda-grid .field-card-value{font-size:12px;}
+.ig-banner{background:linear-gradient(135deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);border-radius:10px;padding:12px 14px;color:white;display:flex;align-items:center;gap:10px;margin-bottom:4px;cursor:pointer;}
+.ig-banner i{font-size:22px;}
+.ig-banner-text{font-size:13px;font-weight:500;}
+.ig-banner-sub{font-size:11px;opacity:.85;}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <h1 style="font-family:'Open Sans',sans-serif;font-weight:700;letter-spacing:0.04em;">ORTOGONALE</h1>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-top:2px;">
+      <p id="header-sub">3 ortaggi in coltivazione</p>
+      <span id="sync-badge" style="font-size:11px;color:rgba(255,255,255,.5);">💾 Locale</span>
+    </div>
+  </div>
+  <div class="nav">
+    <button class="active" onclick="switchTab('orto')"><i class="ti ti-plant-2"></i><br>Orto</button>
+    <button onclick="switchTab('gantt')"><i class="ti ti-chart-gantt"></i><br>Gantt</button>
+    <button onclick="switchTab('storia')"><i class="ti ti-book-2"></i><br>Storia</button>
+    <button onclick="switchTab('annate')"><i class="ti ti-calendar-stats"></i><br>Annate</button>
+    <button onclick="switchTab('mappa')"><i class="ti ti-map-2"></i><br>Mappa</button>
+  </div>
+  <div class="content">
+    <!-- ORTO -->
+    <div class="section active" id="tab-orto">
+      <div id="detail-view" style="display:none;">
+        <button class="back-btn" onclick="closeDetail()"><i class="ti ti-arrow-left"></i> Torna all'orto</button>
+        <div id="detail-content"></div>
+      </div>
+      <div id="list-view">
+        <button class="add-btn" onclick="openModal()"><i class="ti ti-plus"></i> Aggiungi ortaggio</button>
+        <div id="veggie-list"></div>
+      </div>
+    </div>
+    <!-- GANTT -->
+    <div class="section" id="tab-gantt">
+      <div class="gantt-nav">
+        <button class="gantt-nav-btn" onclick="ganttShift(-1)">‹</button>
+        <span class="gantt-nav-title" id="gantt-title"></span>
+        <button class="gantt-nav-btn" onclick="ganttShift(1)">›</button>
+      </div>
+      <div class="gantt-scroll"><div class="gantt-container" id="gantt-container"></div></div>
+      <div class="gantt-legend">
+        <div class="gantt-legend-item"><div class="gantt-legend-dot" style="background:#639922;"></div>In crescita</div>
+        <div class="gantt-legend-item"><div class="gantt-legend-dot" style="background:#BA7517;"></div>Imminente</div>
+        <div class="gantt-legend-item"><div class="gantt-legend-dot" style="background:#085041;"></div>Pronta</div>
+        <div class="gantt-legend-item"><div class="gantt-legend-dot" style="background:#AAC48A;"></div>Futura</div>
+        <div class="gantt-legend-item"><div class="gantt-legend-dot" style="background:#E53E3E;border-radius:50%;"></div>Oggi</div>
+      </div>
+    </div>
+    <!-- STORIA -->
+    <div class="section" id="tab-storia">
+      <div id="storia-view"></div>
+    </div>
+    <!-- ANNATE -->
+    <div class="section" id="tab-annate">
+      <div id="annate-content"></div>
+    </div>
+    <!-- MAPPA -->
+    <div class="section" id="tab-mappa">
+      <div id="mappa-content"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Modale aggiungi ortaggio -->
+<div class="modal-bg" id="modal-bg">
+  <div class="modal">
+    <h2>Aggiungi ortaggio</h2>
+    <p class="modal-subtitle">La previsione di raccolta viene calcolata automaticamente</p>
+
+    <div class="modal-sec" style="margin-top:0;padding-top:0;border-top:none;">Nome</div>
+    <div class="field"><label>Ortaggio (emoji + nome)</label>
+      <input type="text" id="inp-tipo" placeholder="es. 🌿 Spinacio Ricciolo" list="ortaggio-list">
+      <datalist id="ortaggio-list">
+        <option value="🍅 Pomodoro"><option value="🥒 Zucchina"><option value="🥕 Carota">
+        <option value="🥬 Lattuga"><option value="🧅 Cipolla"><option value="🫑 Peperone">
+        <option value="🍆 Melanzana"><option value="🌿 Basilico"><option value="🥦 Broccolo">
+        <option value="🧄 Aglio"><option value="🫘 Fagiolo"><option value="🌽 Mais"><option value="🍓 Fragola">
+        <option value="🌿 Spinacio"><option value="🥗 Rucola"><option value="🫛 Pisello">
+      </datalist>
+    </div>
+
+    <div class="modal-sec">Informazioni pianta</div>
+    <div class="field"><label>Famiglia</label><input type="text" id="inp-famiglia" placeholder="es. CHENOPODIACEAE"></div>
+    <div class="field"><label>Specie</label><input type="text" id="inp-specie" placeholder="es. SPINACIA OLERACIA"></div>
+    <div class="field"><label>Provenienza</label><input type="text" id="inp-provenienza" placeholder="es. Acquisto / Semina"></div>
+    <div class="field"><label>Produttore / Semente</label><input type="text" id="inp-produttore" placeholder="es. Orto Mio"></div>
+    <div class="field"><label>Vivaio</label><input type="text" id="inp-vivaio" placeholder="es. Viridea (Rho)"></div>
+    <div class="field"><label>Codice prodotto</label><input type="text" id="inp-codice" placeholder="es. H510"></div>
+    <div class="field"><label>Data acquisto piantine</label><input type="date" id="inp-acquisto"></div>
+    <div class="field"><label>N° piantine</label><input type="number" id="inp-npiantine" placeholder="es. 9" min="1"></div>
+    <div class="field"><label>Data trapianto</label><input type="date" id="inp-data" oninput="aggiornaRaccolta()"></div>
+    <div class="field">
+      <label>Tempo di raccolta (giorni)</label>
+      <input type="number" id="inp-vegeta" min="1" max="365" placeholder="es. 35" oninput="aggiornaRaccolta()">
+      <div class="field-hint">La previsione raccolta verrà calcolata automaticamente</div>
+    </div>
+    <div class="field"><label>Previsione raccolta</label><div class="field-readonly" id="inp-raccolta-preview">— inserisci trapianto e tempo raccolta</div></div>
+    <div class="field"><label>Inizio raccolta</label><input type="date" id="inp-inizioRaccolta"></div>
+    <div class="field"><label>Fine raccolta</label><input type="date" id="inp-fineRaccolta"></div>
+    <div class="field"><label>Kg raccolti</label><input type="text" id="inp-kgRaccolti" placeholder="es. 2.5"></div>
+    <div class="field"><label>Prezzo Kg GDO</label><input type="text" id="inp-prezzoKg" placeholder="es. € 5,96 (CORTILIA)"></div>
+
+    <div class="modal-sec">Dimora</div>
+    <div class="field"><label>Box / Serra</label><input type="text" id="inp-box" placeholder="es. SERRA"></div>
+    <div class="field"><label>Fila</label><input type="text" id="inp-fila" placeholder="es. 1"></div>
+    <div class="field"><label>Mq box</label><input type="text" id="inp-mqBox" placeholder="es. 2"></div>
+    <div class="field"><label>Posizione</label><input type="text" id="inp-pos" placeholder="es. angolo nord"></div>
+    <div class="field"><label>Consociazioni box</label><input type="text" id="inp-consociazioni" placeholder="es. INSALATE"></div>
+    <div class="field"><label>Coltivazione precedente</label><input type="text" id="inp-coltPrec" placeholder="es. NESSUNA"></div>
+    <div class="field"><label>Periodo riposo</label><input type="text" id="inp-periodoRiposo" placeholder="es. 4 mesi"></div>
+    <div class="field"><label>Telo nero</label><input type="text" id="inp-teloNero" placeholder="Sì / No"></div>
+    <div class="field"><label>Aggiunta compost</label><input type="text" id="inp-compost" placeholder="Sì / No"></div>
+
+    <div class="modal-sec">Note</div>
+    <div class="field"><label>Note generali</label><textarea id="inp-note" placeholder="Osservazioni, varietà, condizioni..."></textarea></div>
+
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeModal()">Annulla</button>
+      <button class="btn-save" onclick="saveVeggie()">Salva</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modale aggiornamento -->
+<div class="modal-bg" id="update-modal-bg">
+  <div class="modal">
+    <h2>Nuovo aggiornamento</h2>
+    <div class="field"><label>Data</label><input type="date" id="upd-data"></div>
+    <div class="field"><label>Note di crescita</label><textarea id="upd-note" placeholder="Come sta crescendo? Hai notato qualcosa?"></textarea></div>
+    <div class="field">
+      <label>Foto (puoi aggiungerne più di una)</label>
+      <div class="photo-source-row">
+        <div class="photo-source-btn"><i class="ti ti-camera"></i><span>Fotocamera</span><input type="file" accept="image/*" capture="environment" onchange="addPP(event)"></div>
+        <div class="photo-source-btn"><i class="ti ti-photo"></i><span>Galleria</span><input type="file" accept="image/*" multiple onchange="addPP(event)"></div>
+      </div>
+      <div class="photos-preview" id="pending-preview"></div>
+    </div>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="closeUpdateModal()">Annulla</button>
+      <button class="btn-save" onclick="saveUpdate()">Salva</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modale post Instagram -->
+<div class="modal-bg" id="ig-modal-bg">
+  <div class="modal">
+    <h2>📸 Post Instagram</h2>
+    <p class="modal-subtitle">Testo generato dalle foto caricate — copialo e incollalo su Instagram</p>
+    <div id="ig-photos-preview" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;"></div>
+    <div style="background:#f5f5f5;border-radius:10px;padding:12px;margin-bottom:12px;min-height:80px;position:relative;">
+      <textarea id="ig-text" style="width:100%;border:none;background:transparent;font-size:13px;font-family:inherit;resize:none;height:160px;color:#111;outline:none;" placeholder="Generazione in corso..."></textarea>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn-cancel" style="flex:1;" onclick="closeIgModal()">Chiudi</button>
+      <button class="btn-save" style="flex:1;background:#E1306C;" onclick="copyIgPost()"><i class="ti ti-copy"></i> Copia testo</button>
+    </div>
+  </div>
+</div>
+
+<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+  <button class="lightbox-close"><i class="ti ti-x"></i></button>
+  <img id="lightbox-img" src="" alt="">
+  <p class="lightbox-caption" id="lightbox-cap"></p>
+</div>
+<div class="gantt-tooltip" id="gantt-tooltip"></div>
+
+<script>
+const oggi=new Date();oggi.setHours(0,0,0,0);
+const pad=n=>String(n).padStart(2,'0');
+const isoToday=oggi.getFullYear()+'-'+pad(oggi.getMonth()+1)+'-'+pad(oggi.getDate());
+const MN=['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
+const MB=['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'];
+const Mm=['gen','feb','mar','apr','mag','giu','lug','ago','set','ott','nov','dic'];
+const DAY=5,WIN=4;
+
+function fd(s){if(!s)return'—';const[y,m,d]=s.split('-');return d+' '+Mm[+m-1]+' '+y;}
+function df(iso){if(!iso)return null;const t=new Date(iso);t.setHours(0,0,0,0);return Math.round((t-oggi)/86400000);}
+function addD(iso,n){if(!iso||!n)return null;const d=new Date(iso);d.setDate(d.getDate()+parseInt(n));return d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());}
+function prog(s,r){if(!s||!r)return 5;const a=new Date(s),b=new Date(r);return Math.min(99,Math.max(5,Math.round((oggi-a)/(b-a)*100)));}
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function gr(v){return addD(v.data,v.vegeta);}
+function stato(v){const d=df(gr(v));if(d===null)return'germoglio';if(d<=14)return'raccolta';return d>40?'germoglio':'crescita';}
+function emj(t){return t?t.split(' ')[0]:'🌱';}
+function nomeSenza(t){return t?t.split(' ').slice(1).join(' '):t;}
+
+const DEMO=[
+  {id:1,tipo:'🌿 Spinacio Ricciolo',
+   famiglia:'CHENOPODIACEAE',specie:'SPINACIA OLERACIA',provenienza:'Acquisto',
+   produttore:'Orto Mio',vivaio:'Viridea (Rho)',codice:'H510',
+   acquisto:'2026-03-06',npiantine:'9',data:'2026-03-08',vegeta:40,
+   inizioRaccolta:null,fineRaccolta:null,kgRaccolti:null,prezzoKg:'€ 5,96 (CORTILIA)',
+   box:'SERRA',fila:'1',mqBox:null,pos:'Box Serra fila 1',
+   consociazioni:'INSALATE',coltPrec:'NESSUNA',periodoRiposo:'4 mesi',
+   teloNero:'No',compost:'Sì',note:'La terra era stata lavorata 15 gg prima. Aggiunto il Compost.',
+   iconFoto:null,coverFoto:null,
+   updates:[
+     {id:'u1',d:'8 mar',iso:'2026-03-08',t:'Trapianto delle piantine. Aggiunto il Compost. La terra era stata lavorata 15 gg prima.',fotos:[]},
+     {id:'u2',d:'17 mar',iso:'2026-03-17',t:'Innaffiatura 2 volte a settimana.',fotos:[]},
+     {id:'u3',d:'27 mar',iso:'2026-03-27',t:'Innaffiatura 2 volte a settimana.',fotos:[]}
+   ]},
+  {id:2,tipo:'🍅 Pomodoro',
+   famiglia:'SOLANACEAE',specie:'SOLANUM LYCOPERSICUM',provenienza:'Acquisto',
+   produttore:null,vivaio:null,codice:null,
+   acquisto:'2026-03-28',npiantine:'3',data:'2026-04-01',vegeta:105,
+   inizioRaccolta:null,fineRaccolta:null,kgRaccolti:null,prezzoKg:null,
+   box:null,fila:'1',mqBox:null,pos:'Fila 1',
+   consociazioni:null,coltPrec:null,periodoRiposo:null,
+   teloNero:null,compost:'Sì',note:'Varietà ciliegino',
+   iconFoto:null,coverFoto:null,
+   updates:[
+     {id:'u4',d:'1 apr',iso:'2026-04-01',t:'Trapianto effettuato.',fotos:[]},
+     {id:'u5',d:'14 apr',iso:'2026-04-14',t:'Primi germogli visibili.',fotos:[]},
+     {id:'u6',d:'2 mag',iso:'2026-05-02',t:'Pianta alta 20cm, aggiunto sostegno.',fotos:[]}
+   ]},
+  {id:3,tipo:'🥒 Zucchina',
+   famiglia:'CUCURBITACEAE',specie:'CUCURBITA PEPO',provenienza:'Acquisto',
+   produttore:null,vivaio:null,codice:null,
+   acquisto:'2026-04-10',npiantine:'2',data:'2026-04-15',vegeta:55,
+   inizioRaccolta:null,fineRaccolta:null,kgRaccolti:null,prezzoKg:null,
+   box:null,fila:null,mqBox:null,pos:'Angolo est',
+   consociazioni:null,coltPrec:null,periodoRiposo:null,
+   teloNero:null,compost:null,note:null,
+   iconFoto:null,coverFoto:null,
+   updates:[
+     {id:'u7',d:'15 apr',iso:'2026-04-15',t:'Trapianto effettuato.',fotos:[]},
+     {id:'u8',d:'25 apr',iso:'2026-04-25',t:'Germogliata.',fotos:[]}
+   ]}
+];
+
+// ══════════════════════════════════════════════════
+// ⚠️  SOSTITUISCI QUESTO BLOCCO CON LA TUA CONFIG
+//     Prendila da Firebase Console → Impostazioni →
+//     Le tue app → </> → firebaseConfig
+// ══════════════════════════════════════════════════
+const firebaseConfig = {
+  apiKey: "AIzaSyDYIe40mfqqbCoPgTJPBaC36LUGA_7wPGQ",
+  authDomain: "ortogonale-5e01f.firebaseapp.com",
+  projectId: "ortogonale-5e01f",
+  storageBucket: "ortogonale-5e01f.firebasestorage.app",
+  messagingSenderId: "901336476111",
+  appId: "1:901336476111:web:2090475e029dec597ecaba"
+};
+// ── Firebase SDK (caricato da CDN) ──
+let fbApp=null, fbDb=null, fbAuth=null, fbUid=null;
+let fbReady=false;
+
+function initFirebase(){
+  return new Promise(res=>{
+    // Carica Firebase dinamicamente
+    const s1=document.createElement('script');
+    s1.src='https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js';
+    s1.onload=()=>{
+      const s2=document.createElement('script');
+      s2.src='https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js';
+      s2.onload=()=>{
+        const s3=document.createElement('script');
+        s3.src='https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js';
+        s3.onload=async()=>{
+          try{
+            // Controlla se la config è stata sostituita
+            if(firebaseConfig.apiKey.startsWith('INSERISCI')){
+              console.warn('Firebase non configurato — uso solo locale');
+              fbReady=false; res(false); return;
+            }
+            fbApp=firebase.initializeApp(firebaseConfig);
+            fbAuth=firebase.auth();
+            fbDb=firebase.firestore();
+            // Login anonimo — ogni dispositivo ha il suo UID stabile
+            await new Promise((r2,rj)=>{
+              fbAuth.onAuthStateChanged(async user=>{
+                if(user){ fbUid=user.uid; }
+                else{
+                  const u=await fbAuth.signInAnonymously();
+                  fbUid=u.user.uid;
+                }
+                fbReady=true; r2();
+              });
+            });
+            res(true);
+          }catch(e){
+            console.warn('Firebase init fallito:',e.message);
+            fbReady=false; res(false);
+          }
+        };
+        s3.onerror=()=>{fbReady=false;res(false);};
+        document.head.appendChild(s3);
+      };
+      s2.onerror=()=>{fbReady=false;res(false);};
+      document.head.appendChild(s2);
+    };
+    s1.onerror=()=>{fbReady=false;res(false);};
+    document.head.appendChild(s1);
+  });
+}
+
+// Ref Firestore per l'utente corrente
+function userDoc(name){ return fbDb.collection('utenti').doc(fbUid).collection('dati').doc(name); }
+
+async function fbSave(name,data){
+  if(!fbReady||!fbUid) return false;
+  try{
+    // Firestore ha limite 1MB per documento — salviamo in chunk se serve
+    const json=JSON.stringify(data);
+    if(json.length<900000){
+      await userDoc(name).set({payload:json,ts:Date.now()});
+    } else {
+      // spezza in chunk da 800KB
+      const chunks=[];
+      for(let i=0;i<json.length;i+=800000) chunks.push(json.slice(i,i+800000));
+      const batch=fbDb.batch();
+      batch.set(userDoc(name),{chunks:chunks.length,ts:Date.now()});
+      chunks.forEach((c,i)=>batch.set(userDoc(name+`_chunk${i}`),{data:c}));
+      await batch.commit();
+    }
+    return true;
+  }catch(e){console.warn('fbSave error:',e);return false;}
+}
+
+async function fbLoad(name){
+  if(!fbReady||!fbUid) return null;
+  try{
+    const doc=await userDoc(name).get();
+    if(!doc.exists) return null;
+    const d=doc.data();
+    if(d.payload) return JSON.parse(d.payload);
+    if(d.chunks){
+      let full='';
+      for(let i=0;i<d.chunks;i++){
+        const ch=await userDoc(name+`_chunk${i}`).get();
+        full+=ch.data().data;
+      }
+      return JSON.parse(full);
+    }
+    return null;
+  }catch(e){console.warn('fbLoad error:',e);return null;}
+}
+
+// ── IndexedDB — cache locale ──
+const DB_NAME='ortogonale_db', DB_VER=1;
+let idb=null;
+
+function openIDB(){
+  return new Promise((res,rej)=>{
+    const req=indexedDB.open(DB_NAME,DB_VER);
+    req.onupgradeneeded=e=>{
+      if(!e.target.result.objectStoreNames.contains('store'))
+        e.target.result.createObjectStore('store');
+    };
+    req.onsuccess=e=>{idb=e.target.result;res(idb);};
+    req.onerror=e=>rej(e);
+  });
+}
+function idbSet(key,val){
+  return new Promise((res,rej)=>{
+    const tx=idb.transaction('store','readwrite');
+    tx.objectStore('store').put(val,key);
+    tx.oncomplete=()=>res(); tx.onerror=e=>rej(e);
+  });
+}
+function idbGet(key){
+  return new Promise((res,rej)=>{
+    const tx=idb.transaction('store','readonly');
+    const req=tx.objectStore('store').get(key);
+    req.onsuccess=e=>res(e.target.result); req.onerror=e=>rej(e);
+  });
+}
+
+// ── Save / Load con sincronizzazione ──
+// Strategia: salva sempre in IndexedDB (veloce, locale),
+//            e in parallelo sincronizza su Firebase (cloud)
+let _savePending={};
+function schedSave(key){
+  // debounce 1.5s per non sovraccaricare Firebase con ogni tasto
+  clearTimeout(_savePending[key]);
+  _savePending[key]=setTimeout(()=>_doSave(key),1500);
+}
+
+async function _doSave(key){
+  const data = key==='veggies' ? {veggies,nid,nuid} : storia;
+  try{ await idbSet(key, JSON.stringify(data)); }catch(e){}
+  if(fbReady){ await fbSave(key, data); }
+  showSaveToast();
+}
+
+async function saveData(){ schedSave('veggies'); }
+async function saveStoria(){ schedSave('storia'); }
+
+// ── Indicatore sync ──
+function showSyncBadge(ok){
+  const b=document.getElementById('sync-badge');
+  if(!b) return;
+  b.textContent=ok?'☁️ Sincronizzato':'💾 Locale';
+  b.style.color=ok?'rgba(255,255,255,.9)':'rgba(255,255,255,.5)';
+}
+
+async function loadData(){
+  await openIDB();
+  let loaded=false;
+
+  // 1. Prova Firebase (dati più aggiornati se multi-dispositivo)
+  if(fbReady){
+    const cloud=await fbLoad('veggies');
+    if(cloud){
+      veggies=cloud.veggies||[];
+      nid=cloud.nid||10; nuid=cloud.nuid||20;
+      await idbSet('veggies',JSON.stringify(cloud)); // aggiorna cache locale
+      loaded=true; showSyncBadge(true);
+    }
+  }
+
+  // 2. Fallback IndexedDB locale
+  if(!loaded){
+    try{
+      const raw=await idbGet('veggies');
+      if(raw){ const c=JSON.parse(raw); veggies=c.veggies||[]; nid=c.nid||10; nuid=c.nuid||20; loaded=true; }
+    }catch(e){}
+  }
+
+  // 3. Fallback localStorage (migrazione da versione precedente)
+  if(!loaded){
+    try{
+      const ls=localStorage.getItem('orto_veggies_v1');
+      if(ls){ veggies=JSON.parse(ls); }
+      else{ veggies=JSON.parse(JSON.stringify(DEMO)); }
+    }catch(e){ veggies=JSON.parse(JSON.stringify(DEMO)); }
+  }
+}
+
+async function loadStoria(){
+  let loaded=false;
+
+  if(fbReady){
+    const cloud=await fbLoad('storia');
+    if(cloud){ storia=cloud; await idbSet('storia',JSON.stringify(cloud)); loaded=true; }
+  }
+
+  if(!loaded){
+    try{
+      const raw=await idbGet('storia');
+      if(raw){ storia=JSON.parse(raw); loaded=true; }
+    }catch(e){}
+  }
+
+  if(!loaded){
+    try{
+      const ls=localStorage.getItem('orto_storia_v1');
+      if(ls) storia=JSON.parse(ls);
+    }catch(e){}
+  }
+}
+
+function showSaveToast(){
+  const t=document.getElementById('save-toast');
+  if(!t) return;
+  t.style.opacity='1';t.style.transform='translateY(0)';
+  clearTimeout(window._toastTimer);
+  window._toastTimer=setTimeout(()=>{t.style.opacity='0';t.style.transform='translateY(10px)';},2000);
+}
+
+let veggies=[];
+let nid=10,nuid=20,curDetail=null,pendPh=[],editUid=null,editPh=[];
+let gM=oggi.getMonth(),gY=oggi.getFullYear();
+let storiaEditCap=null;
+
+// ── STORIA ──
+let storia={titolo:'La storia del mio orto', capitoli:[]};
+let storiaNextId=1;
+
+// ── Avvio ──
+(async()=>{
+  // Avvia Firebase in parallelo all'apertura del DB locale
+  const [,] = await Promise.all([openIDB(), initFirebase()]);
+  await loadData();
+  await loadStoria();
+
+  // Migra storia vecchio formato → capitoli
+  if(storia.desc||storia.photos?.length){
+    if(!storia.capitoli) storia.capitoli=[];
+    if(storia.capitoli.length===0){
+      storia.capitoli.push({
+        id:'cap'+storiaNextId++,
+        titolo:'Inizio',
+        testo:storia.desc||'',
+        photos:storia.photos||[],
+        data:isoToday
+      });
+    }
+    delete storia.desc; delete storia.photos;
+    await _doSave('storia');
+  }
+  if(!storia.capitoli) storia.capitoli=[];
+  storia.capitoli.forEach(c=>{
+    if(c.id){const n=parseInt(c.id.replace('cap',''));if(n>=storiaNextId)storiaNextId=n+1;}
+  });
+
+  showSyncBadge(fbReady);
+  renderVeggies();
+})();
+
+// ── GANTT ──
+function ganttShift(d){gM+=d;if(gM>11){gM=0;gY++;}if(gM<0){gM=11;gY--;}renderGantt();}
+
+function renderGantt(){
+  const ws=new Date(gY,gM,1);ws.setHours(0,0,0,0);
+  const we=new Date(gY,gM+WIN,0);we.setHours(0,0,0,0);
+  const totD=Math.round((we-ws)/86400000)+1,totW=totD*DAY;
+  const em=new Date(gY,gM+WIN-1,1);
+  document.getElementById('gantt-title').textContent=MB[gM]+' '+gY+' – '+MB[em.getMonth()]+' '+em.getFullYear();
+
+  if(!veggies.length){
+    document.getElementById('gantt-container').innerHTML='<div class="gantt-empty">Nessun ortaggio da visualizzare.<br>Aggiungine uno dalla scheda Orto!</div>';
+    return;
+  }
+
+  // linee verticali mesi
+  let gridLines='',mhdrs='',cur=0;
+  for(let i=0;i<WIN;i++){
+    const md=new Date(gY,gM+i,1),mdays=new Date(gY,gM+i+1,0).getDate(),mw=mdays*DAY,mx=cur*DAY;
+    mhdrs+=`<div class="gantt-month-hd" style="width:${mw}px;min-width:${mw}px;">${MB[md.getMonth()]} ${md.getFullYear()}</div>`;
+    if(i>0)gridLines+=`<div class="gantt-grid-line" style="left:${mx}px;height:100%;"></div>`;
+    cur+=mdays;
+  }
+
+  // oggi
+  const todOff=Math.round((oggi-ws)/86400000),todX=todOff*DAY,showTod=todOff>=0&&todOff<=totD;
+
+  // righe
+  let rows='';
+  veggies.forEach(v=>{
+    if(!v.data)return;
+    const raccolta=gr(v);
+    const sD=new Date(v.data);sD.setHours(0,0,0,0);
+    const eD=raccolta?new Date(raccolta):sD;eD.setHours(0,0,0,0);
+    const sOff=Math.round((sD-ws)/86400000),eOff=Math.round((eD-ws)/86400000);
+    const bL=Math.max(0,sOff)*DAY,bR=Math.min(totD-1,eOff)*DAY+DAY,bW=Math.max(6,bR-bL);
+    const vis=bR>0&&bL<totW;
+    const days=df(raccolta);
+    let col='#639922';
+    if(days===null||sD>oggi)col='#AAC48A';
+    else if(days<=0)col='#085041';
+    else if(days<=14)col='#BA7517';
+    const p=prog(v.data,raccolta),pw=Math.round(bW*p/100);
+    const nome=nomeSenza(v.tipo)||v.tipo;
+    const lbl=bW>50?emj(v.tipo)+' '+nome:bW>22?emj(v.tipo):'';
+    const tip=`${esc(v.tipo)}: ${fd(v.data)} → ${fd(raccolta)||'—'}`;
+    rows+=`<div class="gantt-row">
+      <div class="gantt-row-lbl"><span title="${esc(v.tipo)}">${emj(v.tipo)} ${esc(nome)}</span><small>${esc(v.codice||'')}</small></div>
+      <div class="gantt-track-wrap" style="width:${totW}px;min-width:${totW}px;">
+        <div class="gantt-track" style="width:${totW}px;">
+          ${gridLines}
+          ${showTod?`<div class="gantt-today-line" style="left:${todX}px;"><span class="gantt-today-lbl" style="left:0;">oggi</span></div>`:''}
+          ${vis?`<div class="gantt-bar" style="left:${bL}px;width:${bW}px;background:${col};" onmouseenter="showTip(event,'${tip}')" onmouseleave="hideTip()"><div class="gantt-bar-prog" style="width:${pw}px;"></div><span class="gantt-bar-label">${lbl}</span></div>`:''}
+        </div>
+      </div>
+    </div>`;
+  });
+
+  document.getElementById('gantt-container').innerHTML=`
+    <div style="display:flex;margin-bottom:4px;">
+      <div style="width:82px;flex-shrink:0;"></div>
+      <div style="display:flex;width:${totW}px;">${mhdrs}</div>
+    </div>
+    ${rows}`;
+}
+
+function showTip(e,txt){const t=document.getElementById('gantt-tooltip');t.textContent=txt;t.style.display='block';t.style.left=(e.clientX+8)+'px';t.style.top=(e.clientY-30)+'px';}
+function hideTip(){document.getElementById('gantt-tooltip').style.display='none';}
+
+// ── Resto ──
+function getVeggieNames(){return veggies.map(v=>v.tipo).join(', ')||'nessun ortaggio';}
+function aggiornaRaccolta(){const iso=addD(document.getElementById('inp-data').value,document.getElementById('inp-vegeta').value),el=document.getElementById('inp-raccolta-preview');el.textContent=iso?fd(iso):'— inserisci semina e periodo vegetativo';el.style.color=iso?'#111':'';}
+
+function renderVeggies(){
+  document.getElementById('header-sub').textContent=veggies.length+(veggies.length===1?' ortaggio':' ortaggi')+' in coltivazione';
+  const list=document.getElementById('veggie-list');
+  if(!veggies.length){list.innerHTML='<p style="color:#888;font-size:14px;text-align:center;padding:40px 0;">Nessun ortaggio.<br>Aggiungi il primo!</p>';return;}
+
+  // Mostra solo ortaggi con data di semina negli ultimi 6 mesi
+  const seimesiFA=new Date(oggi);
+  seimesiFA.setMonth(seimesiFA.getMonth()-6);
+  const recenti=veggies.filter(v=>!v.data||new Date(v.data)>=seimesiFA);
+  const nascosti=veggies.length-recenti.length;
+
+  const sl={germoglio:'Germoglio',crescita:'In crescita',raccolta:'Pronta'};
+  if(!recenti.length){
+    list.innerHTML=`<p style="color:#888;font-size:13px;text-align:center;padding:20px 0;">Nessun ortaggio attivo negli ultimi 6 mesi.<br><span style="font-size:12px;">Vedi tutti nella scheda <b>Annate</b>.</span></p>`;
+    return;
+  }
+
+  list.innerHTML=recenti.map(v=>{
+    const r=gr(v),s=stato(v),d=df(r),p=prog(v.data,r);
+    let hb='';
+    if(r){if(d<=0)hb=`<div class="harvest-badge ready"><i class="ti ti-basket"></i> Pronta per la raccolta!</div>`;else if(d<=7)hb=`<div class="harvest-badge soon"><i class="ti ti-clock"></i> Tra ${d} giorn${d===1?'o':'i'} (${fd(r)})</div>`;else hb=`<div class="harvest-badge"><i class="ti ti-calendar"></i> Raccolta: ${fd(r)}</div>`;}
+    const ih=v.iconFoto?`<img src="${v.iconFoto}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`:(v.coverFoto?`<img src="${v.coverFoto}" alt="" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`:`<span>${emj(v.tipo)}</span>`);
+    return `<div class="veggie-card" onclick="openDetail(${v.id})"><div class="veggie-header"><div class="veggie-icon">${ih}</div><div class="veggie-info"><div class="veggie-name">${esc(nomeSenza(v.tipo)||v.tipo)}</div><div class="veggie-date">${v.box?esc(v.box)+' · ':''} ${v.fila?'Fila '+esc(v.fila)+' · ':''}${fd(v.data)}</div></div><span class="veggie-status status-${s}">${sl[s]}</span></div><div class="progress-bar"><div class="progress-fill" style="width:${p}%"></div></div><div style="display:flex;justify-content:space-between;margin-top:4px;"><span style="font-size:11px;color:#888;">Crescita</span><span style="font-size:11px;color:#888;">${p}%</span></div>${hb}</div>`;
+  }).join('')
+  + (nascosti>0?`<div style="text-align:center;padding:10px 0;font-size:12px;color:#888;">+ ${nascosti} ortaggio${nascosti>1?'gi':''} da anni precedenti — visibili in <b style="color:#3B6D11;cursor:pointer;" onclick="switchTab('annate')">Annate</b></div>`:'');
+}
+
+function openDetail(id){
+  curDetail=id;editUid=null;editPh=[];
+  const v=veggies.find(x=>x.id===id),r=gr(v),d=df(r),p=prog(v.data,r);
+  document.getElementById('list-view').style.display='none';
+  document.getElementById('detail-view').style.display='block';
+  let hb='';
+  if(r){if(d!==null&&d<=0)hb=`<div class="harvest-info-box"><i class="ti ti-basket" style="font-size:22px;color:#085041;"></i><div><div class="harvest-days" style="color:#085041;">Pronta!</div><div class="harvest-sub">Data prevista: ${fd(r)}</div></div></div>`;else if(d!==null)hb=`<div class="harvest-info-box"><i class="ti ti-calendar" style="font-size:22px;color:#BA7517;"></i><div><div class="harvest-days">${d} giorni</div><div class="harvest-sub">alla raccolta · ${fd(r)}</div></div></div>`;}
+  // Foto della scheda (separate dal diario)
+  const schPhotos = v.photos || [];
+  const thumbs = schPhotos.map((f,i) =>
+    `<div class="photo-thumb" onclick="openLb('${f}','📷 Foto ortaggio')">
+       <img src="${f}" alt="foto">
+       <button style="position:absolute;top:4px;right:4px;width:22px;height:22px;background:rgba(0,0,0,.6);border:none;border-radius:50%;color:white;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;" onclick="event.stopPropagation();delSchPhoto(${id},${i})">×</button>
+     </div>`
+  ).join('');
+  const diary=[...v.updates].reverse().map(u=>rowU(u,id)).join('');
+  const ih=v.iconFoto?`<img class="detail-icon-img" src="${v.iconFoto}" alt="">`:(v.coverFoto?`<img class="detail-icon-img" src="${v.coverFoto}" alt="">`:`<span style="font-size:32px;line-height:1;">${emj(v.tipo)}</span>`);
+  document.getElementById('detail-content').innerHTML=`
+    <!-- Icona grande centrata con due pulsanti: galleria icona e galleria copertina -->
+    <div style="display:flex;flex-direction:column;align-items:center;margin-bottom:14px;gap:8px;">
+      <div style="position:relative;width:72px;height:72px;">
+        <div style="width:72px;height:72px;border-radius:50%;background:#EAF3DE;display:flex;align-items:center;justify-content:center;font-size:38px;overflow:hidden;border:2px solid #d4eabc;">
+          ${ih}
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <!-- Bottone 1: cambia ICONA dalla galleria (solo emoji/immagine icona) -->
+        <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:#3B6D11;background:#EAF3DE;border:none;border-radius:20px;padding:4px 10px;cursor:pointer;">
+          <i class="ti ti-mood-smile" style="font-size:13px;"></i> Cambia icona
+          <input type="file" accept="image/*" style="display:none;" onchange="changeIcon(event,${id})">
+        </label>
+        <!-- Bottone 2: foto copertina (rimane come prima, senza capture per usare galleria) -->
+        <label style="display:flex;align-items:center;gap:4px;font-size:11px;color:#666;background:#f0f0f0;border:none;border-radius:20px;padding:4px 10px;cursor:pointer;">
+          <i class="ti ti-photo" style="font-size:13px;"></i> Foto copertina
+          <input type="file" accept="image/*" style="display:none;" onchange="changeCover(event,${id})">
+        </label>
+      </div>
+    </div>
+    <!-- Nome su tutta la larghezza -->
+    <div style="margin-bottom:16px;">
+      <div class="detail-name" onclick="enName(${id})" id="dn-${id}" style="font-size:20px;justify-content:center;text-align:center;">${esc(v.tipo)} <i class="ti ti-pencil" style="font-size:13px;"></i></div>
+      <input class="detail-name-input" id="dni-${id}" value="${esc(v.tipo)}" style="text-align:center;font-size:18px;" onblur="svName(${id})" onkeydown="if(event.key==='Enter')svName(${id});if(event.key==='Escape')cnName(${id})">
+      <div class="detail-sub" onclick="enPos(${id})" id="dp-${id}" style="justify-content:center;margin-top:4px;">${esc(v.pos)} <i class="ti ti-pencil"></i></div>
+      <input class="detail-sub-input" id="dpi-${id}" value="${esc(v.pos)}" style="text-align:center;" onblur="svPos(${id})" onkeydown="if(event.key==='Enter')svPos(${id});if(event.key==='Escape')cnPos(${id})">
+    </div>
+    ${hb}
+
+    <!-- ═══ SCHEDA TECNICA stile PDF ═══ -->
+    <p class="section-label" style="margin-bottom:6px;">Scheda tecnica <span style="font-size:11px;font-weight:400;color:#aaa;">— tocca un campo per modificarlo</span></p>
+
+    <!-- SEZIONE 1: INFORMAZIONI PIANTA -->
+    <div class="scheda-section">
+      <div class="scheda-section-title">Informazioni pianta</div>
+      <div class="scheda-grid">
+        ${fc('famiglia','Famiglia',       'text', v.famiglia,  'es. CHENOPODIACEAE', id, false)}
+        ${fc('specie',  'Specie',         'text', v.specie,    'es. SPINACIA OLERACIA', id, false)}
+        ${fc('provenienza','Provenienza', 'text', v.provenienza,'es. Acquisto / Semina', id, false)}
+        ${fc('produttore','Produttore',   'text', v.produttore,'es. Orto Mio', id, false)}
+        ${fc('vivaio',  'Vivaio',         'text', v.vivaio,    'es. Viridea (Rho)', id, false)}
+        ${fc('codice',  'Codice prodotto','text', v.codice,    'es. H510', id, false)}
+        ${fc('acquisto','Data acquisto',  'date', v.acquisto,  '', id, false)}
+        ${fc('npiantine','N° piantine',   'number',v.npiantine,'es. 9', id, false)}
+        ${fc('data',    'Data trapianto', 'date', v.data,      '', id, false)}
+        ${fc('vegeta',  'Tempo raccolta (gg)','number',v.vegeta,'es. 35', id, false)}
+        ${fc('inizioRaccolta','Inizio raccolta','date',v.inizioRaccolta,'',id,false)}
+        ${fc('fineRaccolta',  'Fine raccolta',  'date',v.fineRaccolta,  '',id,false)}
+        ${fc('kgRaccolti','Kg raccolti',   'text', v.kgRaccolti,'es. 2.5', id, false)}
+        ${fc('prezzoKg', 'Prezzo Kg GDO', 'text', v.prezzoKg,  'es. € 5,96', id, false)}
+        <div class="field-card full-width highlight">
+          <div class="field-card-label">📅 Previsione raccolta (calcolata)</div>
+          <div class="field-card-value">${r?fd(r):'— inserisci trapianto e tempo raccolta'}</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SEZIONE 2: DIMORA -->
+    <div class="scheda-section">
+      <div class="scheda-section-title">Dimora</div>
+      <div class="scheda-grid">
+        ${fc('box',     'Box / Serra',    'text', v.box,       'es. SERRA', id, false)}
+        ${fc('fila',    'File',           'text', v.fila,      'es. 1', id, false)}
+        ${fc('mqBox',   'Mq box',         'text', v.mqBox,     'es. 2', id, false)}
+        ${fc('pos',     'Posizione',      'text', v.pos,       'es. angolo nord', id, false)}
+        ${fc('consociazioni','Consociazioni','text',v.consociazioni,'es. INSALATE', id, false)}
+        ${fc('coltPrec','Coltivazione precedente','text',v.coltPrec,'es. NESSUNA', id, false)}
+        ${fc('periodoRiposo','Periodo riposo','text',v.periodoRiposo,'es. 4 mesi', id, false)}
+        ${fc('teloNero','Telo nero',       'text', v.teloNero,  'Sì / No', id, false)}
+        ${fc('compost', 'Aggiunta compost','text', v.compost,   'Sì / No', id, false)}
+        ${fc('note',    'Note',           'textarea',v.note,   'Osservazioni generali...', id, true)}
+      </div>
+    </div>
+
+    <div class="progress-bar" style="height:10px;margin-bottom:4px;"><div class="progress-fill" style="width:${p}%"></div></div>
+    <div style="text-align:right;font-size:12px;color:#888;margin-bottom:16px;">${p}% del ciclo completato</div>
+    <p class="section-label">Foto (${schPhotos.length})</p>
+    <div class="photo-grid">
+      ${thumbs}
+      <div class="photo-add-cell"><i class="ti ti-camera"></i><span>Fotocamera</span><input type="file" accept="image/*" capture="environment" onchange="addSchPhoto(event,${id})"></div>
+      <div class="photo-add-cell"><i class="ti ti-photo"></i><span>Galleria</span><input type="file" accept="image/*" multiple onchange="addSchPhoto(event,${id})"></div>
+    </div>
+    <div class="detail-actions">
+      <button class="btn-green-soft" onclick="openUM(${id})"><i class="ti ti-plus"></i> Nuovo aggiornamento</button>
+      <button style="flex:1;padding:8px;border:none;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:4px;background:#E6F1FB;color:#185FA5;" onclick="exportPDF(${id})"><i class="ti ti-file-type-pdf"></i> Salva PDF</button>
+      <button class="btn-red-soft" onclick="delV(${id})"><i class="ti ti-trash"></i> Elimina</button>
+    </div>
+    <p class="section-label">Diario di crescita (${v.updates.length})</p>
+    <div class="update-list">${diary||'<p style="font-size:13px;color:#888;padding:8px 0;">Nessun aggiornamento ancora.</p>'}</div>`;
+}
+
+function fc(field,label,type,value,ph,vid,fw){
+  const dv=value?(type==='date'?fd(value):(type==='number'?value+' giorni':esc(value))):null;
+  const cls='field-card'+(fw?' full-width':'');
+  const inp=type==='textarea'?`<textarea id="fci-${vid}-${field}" placeholder="${ph}" onblur="svFc(${vid},'${field}','${type}')" onkeydown="if(event.key==='Escape')cnFc(${vid},'${field}')">${esc(value||'')}</textarea>`:`<input type="${type}" id="fci-${vid}-${field}" value="${esc(value||'')}" placeholder="${ph}" onblur="svFc(${vid},'${field}','${type}')" onkeydown="if(event.key==='Enter')svFc(${vid},'${field}','${type}');if(event.key==='Escape')cnFc(${vid},'${field}')">`;
+  return `<div class="${cls}" id="fcd-${vid}-${field}" onclick="opFc(${vid},'${field}')">
+    <div class="field-card-label"><i class="ti ti-pencil"></i> ${label}</div>
+    <div class="field-card-value${!value?' empty':''}" id="fcv-${vid}-${field}">${dv||'Tocca per inserire'}</div>
+    <div class="field-card-edit" id="fce-${vid}-${field}">${inp}<div class="field-card-edit-btns"><button style="background:#fff;color:#666;border:0.5px solid #ddd;" onclick="event.stopPropagation();cnFc(${vid},'${field}')">Annulla</button><button style="background:#3B6D11;color:white;" onclick="event.stopPropagation();svFc(${vid},'${field}','${type}')">Salva</button></div></div>
+  </div>`;
+}
+function opFc(vid,f){document.querySelectorAll('.field-card-edit').forEach(e=>e.style.display='none');document.getElementById('fce-'+vid+'-'+f).style.display='block';document.getElementById('fci-'+vid+'-'+f).focus();}
+function cnFc(vid,f){document.getElementById('fce-'+vid+'-'+f).style.display='none';}
+function svFc(vid,f,type){const v=veggies.find(x=>x.id===vid),val=document.getElementById('fci-'+vid+'-'+f).value.trim();if(f==='data'&&!val){alert('La data di semina è obbligatoria.');return;}v[f]=type==='number'?(val?parseInt(val):null):(val||null);cnFc(vid,f);openDetail(vid);renderVeggies();saveData();}
+function enName(id){document.getElementById('dn-'+id).style.display='none';const i=document.getElementById('dni-'+id);i.style.display='block';i.focus();i.select();}
+function svName(id){const v=veggies.find(x=>x.id===id),val=document.getElementById('dni-'+id).value.trim();if(val)v.tipo=val;renderVeggies();openDetail(id);saveData();}
+function cnName(id){document.getElementById('dni-'+id).style.display='none';document.getElementById('dn-'+id).style.display='flex';}
+function enPos(id){document.getElementById('dp-'+id).style.display='none';const i=document.getElementById('dpi-'+id);i.style.display='block';i.focus();i.select();}
+function svPos(id){const v=veggies.find(x=>x.id===id),val=document.getElementById('dpi-'+id).value.trim();if(val)v.pos=val;renderVeggies();openDetail(id);saveData();}
+function cnPos(id){document.getElementById('dpi-'+id).style.display='none';document.getElementById('dp-'+id).style.display='flex';}
+function changeIcon(e,id){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{veggies.find(x=>x.id===id).iconFoto=ev.target.result;renderVeggies();openDetail(id);saveData();};r.readAsDataURL(f);}
+function changeCover(e,id){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{veggies.find(x=>x.id===id).coverFoto=ev.target.result;renderVeggies();openDetail(id);saveData();};r.readAsDataURL(f);}
+function addSchPhoto(e,id){
+  const fs=[...e.target.files];if(!fs.length)return;
+  const v=veggies.find(x=>x.id===id);
+  if(!v.photos)v.photos=[];
+  let done=0;
+  fs.forEach(f=>{const r=new FileReader();r.onload=ev=>{v.photos.push(ev.target.result);if(++done===fs.length){openDetail(id);saveData();}};r.readAsDataURL(f);});
+}
+function delSchPhoto(id,idx){
+  const v=veggies.find(x=>x.id===id);
+  v.photos.splice(idx,1);
+  openDetail(id);saveData();
+}
+function rowU(u,vid){
+  const fh=(u.fotos||[]).map(f=>`<img class="upd-photo-mini" src="${f}" alt="foto" onclick="openLb('${f}','${u.d}')">`).join('');
+  return `<div class="update-item" id="ui-${u.id}" data-vid="${vid}" data-uid="${u.id}">
+    <div class="update-item-inner">
+      <div class="update-date">${u.d}</div>
+      <div class="update-body">
+        <div class="update-text">${esc(u.t)}</div>
+        ${fh?`<div class="upd-photos-row">${fh}</div>`:''}
+        <div class="update-actions">
+          <button class="upd-action-btn" onclick="enEdit(${vid},'${u.id}')"><i class="ti ti-pencil"></i> Modifica</button>
+          <button class="upd-action-btn" style="color:#A32D2D;" onclick="delU(${vid},'${u.id}')"><i class="ti ti-trash"></i> Elimina</button>
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+function enEdit(vid,uid){
+  vid=parseInt(vid); uid=String(uid);
+  if(editUid===uid)return;
+  if(editUid)cnEdit(curDetail,editUid);
+  editUid=uid;
+  const v=veggies.find(x=>x.id===vid),u=v.updates.find(x=>x.id===uid);
+  if(!u){console.warn('update not found',uid);return;}
+  editPh=[...(u.fotos||[])];
+  document.getElementById('ui-'+uid).innerHTML=`<div class="edit-panel"><div class="field"><label>Data</label><input type="date" id="ed-${uid}" value="${u.iso}"></div><div class="field"><label>Testo</label><textarea id="et-${uid}">${esc(u.t)}</textarea></div><div class="field"><label>Foto</label><div class="edit-photos-grid" id="eg-${uid}">${epHtml(uid)}</div><div class="add-photo-row"><div class="add-photo-btn"><i class="ti ti-camera"></i> Fotocamera<input type="file" accept="image/*" capture="environment" onchange="addEP(event,'${uid}')"></div><div class="add-photo-btn"><i class="ti ti-photo"></i> Galleria<input type="file" accept="image/*" multiple onchange="addEP(event,'${uid}')"></div></div></div><div class="edit-panel-btns"><button style="background:#f5f5f5;color:#666;border:0.5px solid #ddd;" onclick="cnEdit(${vid},'${uid}')">Annulla</button><button style="background:#3B6D11;color:white;" onclick="svEdit(${vid},'${uid}')">Salva</button></div></div>`;
+}
+function epHtml(uid){return editPh.map((f,i)=>`<div class="edit-photo-wrap"><img src="${f}" alt=""><button class="edit-photo-del" onclick="rmEP(${i},'${uid}')">×</button></div>`).join('');}
+function rmEP(i,uid){editPh.splice(i,1);document.getElementById('eg-'+uid).innerHTML=epHtml(uid);}
+function addEP(e,uid){const fs=[...e.target.files];let d=0;fs.forEach(f=>{const r=new FileReader();r.onload=ev=>{editPh.push(ev.target.result);if(++d===fs.length)document.getElementById('eg-'+uid).innerHTML=epHtml(uid);};r.readAsDataURL(f);});}
+function svEdit(vid,uid){
+  vid=parseInt(vid); uid=String(uid);
+  const v=veggies.find(x=>x.id===vid),u=v.updates.find(x=>x.id===uid);
+  if(!u){alert('Aggiornamento non trovato.');return;}
+  const tx=document.getElementById('et-'+uid).value.trim(),dt=document.getElementById('ed-'+uid).value;
+  if(!tx){alert('Il testo non può essere vuoto.');return;}
+  u.t=tx;u.fotos=[...editPh];if(dt){u.iso=dt;u.d=fd(dt);}
+  v.updates.sort((a,b)=>a.iso>b.iso?1:-1);
+  editUid=null;editPh=[];openDetail(vid);saveData();
+}
+function cnEdit(vid,uid){
+  vid=parseInt(vid); uid=String(uid);
+  editUid=null;editPh=[];
+  const v=veggies.find(x=>x.id===vid),u=v.updates.find(x=>x.id===uid);
+  if(!u){openDetail(vid);return;}
+  const el=document.getElementById('ui-'+uid);
+  if(el) el.outerHTML=rowU(u,vid);
+}
+function delU(vid,uid){
+  vid=parseInt(vid); uid=String(uid);
+  if(!confirm('Eliminare questo aggiornamento dal diario?'))return;
+  const v=veggies.find(x=>x.id===vid);
+  if(!v){console.warn('veggie not found',vid);return;}
+  v.updates=v.updates.filter(x=>String(x.id)!==uid);
+  editUid=null;
+  // Remove the DOM element directly — avoids full re-render issues
+  const el=document.getElementById('ui-'+uid);
+  if(el) el.remove();
+  // Update the diary count label
+  const lbl=document.querySelector('.section-label');
+  if(lbl && lbl.textContent.includes('Diario')){
+    lbl.textContent=`Diario di crescita (${v.updates.length})`;
+  }
+  saveData();
+}
+function addPP(e){const fs=[...e.target.files];let d=0;fs.forEach(f=>{const r=new FileReader();r.onload=ev=>{pendPh.push(ev.target.result);if(++d===fs.length)renderPP();};r.readAsDataURL(f);});}
+function renderPP(){document.getElementById('pending-preview').innerHTML=pendPh.map((f,i)=>`<div class="preview-wrap"><img src="${f}" alt=""><button class="preview-del" onclick="rmPP(${i})">×</button></div>`).join('');}
+function rmPP(i){pendPh.splice(i,1);renderPP();}
+function openUM(id){curDetail=id;pendPh=[];document.getElementById('upd-data').value=isoToday;document.getElementById('upd-note').value='';document.getElementById('pending-preview').innerHTML='';document.getElementById('update-modal-bg').classList.add('open');}
+function closeUpdateModal(){document.getElementById('update-modal-bg').classList.remove('open');}
+function saveUpdate(){const tx=document.getElementById('upd-note').value.trim(),iso=document.getElementById('upd-data').value||isoToday;if(!tx&&!pendPh.length){alert('Inserisci almeno una nota o una foto.');return;}const v=veggies.find(x=>x.id===curDetail);v.updates.push({id:'u'+nuid++,d:fd(iso),iso,t:tx||'Foto aggiunta',fotos:[...pendPh]});v.updates.sort((a,b)=>a.iso>b.iso?1:-1);closeUpdateModal();openDetail(curDetail);saveData();}
+function closeDetail(){document.getElementById('list-view').style.display='block';document.getElementById('detail-view').style.display='none';curDetail=null;editUid=null;editPh=[];}
+function delV(id){if(!confirm('Vuoi eliminare questo ortaggio?'))return;veggies=veggies.filter(x=>x.id!==id);closeDetail();renderVeggies();saveData();}
+function openLb(src,cap){document.getElementById('lightbox-img').src=src;document.getElementById('lightbox-cap').textContent=cap;document.getElementById('lightbox').classList.add('open');}
+function closeLightbox(){document.getElementById('lightbox').classList.remove('open');}
+function openModal(){
+  ['inp-tipo','inp-famiglia','inp-specie','inp-provenienza','inp-produttore','inp-vivaio','inp-codice',
+   'inp-acquisto','inp-npiantine','inp-data','inp-vegeta','inp-inizioRaccolta','inp-fineRaccolta',
+   'inp-kgRaccolti','inp-prezzoKg','inp-box','inp-fila','inp-mqBox','inp-pos',
+   'inp-consociazioni','inp-coltPrec','inp-periodoRiposo','inp-teloNero','inp-compost','inp-note']
+  .forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
+  document.getElementById('inp-data').value=isoToday;
+  document.getElementById('inp-raccolta-preview').textContent='— inserisci trapianto e tempo raccolta';
+  document.getElementById('modal-bg').classList.add('open');
+}
+function closeModal(){document.getElementById('modal-bg').classList.remove('open');}
+function saveVeggie(){
+  const tipo=document.getElementById('inp-tipo').value.trim(),semina=document.getElementById('inp-data').value,veg=document.getElementById('inp-vegeta').value;
+  if(!tipo){alert('Inserisci il nome dell\'ortaggio');return;}
+  if(!semina){alert('Inserisci la data di trapianto');return;}
+  const gv=id=>document.getElementById(id).value.trim()||null;
+  veggies.push({id:nid++,tipo,
+    famiglia:gv('inp-famiglia'), specie:gv('inp-specie'), provenienza:gv('inp-provenienza'),
+    produttore:gv('inp-produttore'), vivaio:gv('inp-vivaio'), codice:gv('inp-codice'),
+    acquisto:gv('inp-acquisto'), npiantine:gv('inp-npiantine'),
+    data:semina, vegeta:veg?parseInt(veg):null,
+    inizioRaccolta:gv('inp-inizioRaccolta'), fineRaccolta:gv('inp-fineRaccolta'),
+    kgRaccolti:gv('inp-kgRaccolti'), prezzoKg:gv('inp-prezzoKg'),
+    box:gv('inp-box'), fila:gv('inp-fila'), mqBox:gv('inp-mqBox'),
+    pos:gv('inp-pos')||'Non specificata',
+    consociazioni:gv('inp-consociazioni'), coltPrec:gv('inp-coltPrec'),
+    periodoRiposo:gv('inp-periodoRiposo'), teloNero:gv('inp-teloNero'), compost:gv('inp-compost'),
+    note:gv('inp-note'), iconFoto:null, coverFoto:null,
+    updates:[{id:'u'+nuid++,d:fd(semina),iso:semina,t:'Trapianto effettuato',fotos:[]}]
+  });
+  closeModal();renderVeggies();saveData();
+}
+// ── PDF export ──
+function exportPDF(id){
+  const v=veggies.find(x=>x.id===id);
+  const r=gr(v),p=prog(v.data,r);
+  const iconSrc=v.iconFoto||v.coverFoto||null;
+  const iconHtml=iconSrc?`<img src="${iconSrc}" style="width:64px;height:64px;border-radius:50%;object-fit:cover;border:2px solid #d4eabc;">`:`<div style="width:64px;height:64px;border-radius:50%;background:#EAF3DE;display:flex;align-items:center;justify-content:center;font-size:36px;">${emj(v.tipo)}</div>`;
+  const row=(label,val)=>val?`<tr><td style="padding:5px 8px;color:#888;font-size:11px;white-space:nowrap;width:45%;">${label}</td><td style="padding:5px 8px;font-size:12px;font-weight:500;">${esc(val)}</td></tr>`:'';
+  const secTitle=t=>`<tr><td colspan="2" style="padding:10px 8px 4px;font-size:11px;font-weight:700;color:#3B6D11;text-transform:uppercase;letter-spacing:.05em;border-bottom:2px solid #EAF3DE;">${t}</td></tr>`;
+  const diaryRows=v.updates.map(u=>{
+    const fotos=(u.fotos||[]).map(f=>`<img src="${f}" style="width:80px;height:80px;object-fit:cover;border-radius:6px;margin:2px;">`).join('');
+    return `<tr><td style="padding:6px 8px;color:#888;font-size:11px;white-space:nowrap;vertical-align:top;width:80px;">${u.d}</td><td style="padding:6px 8px;font-size:12px;vertical-align:top;">${esc(u.t)}${fotos?`<div style="margin-top:6px;display:flex;flex-wrap:wrap;gap:4px;">${fotos}</div>`:''}</td></tr>`;
+  }).join('');
+  const html=`<!DOCTYPE html><html lang="it"><head><meta charset="UTF-8">
+  <title>Scheda ${esc(v.tipo)}</title>
+  <style>
+    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;margin:0;padding:32px;color:#111;max-width:640px;margin:0 auto;}
+    h1{font-size:24px;font-weight:700;margin:0;color:#111;}
+    .sub{font-size:13px;color:#666;margin-top:4px;}
+    table{width:100%;border-collapse:collapse;margin-bottom:20px;}
+    tr:nth-child(even) td{background:#f9f9f9;}
+    .prog-bar{background:#e0e0e0;border-radius:4px;height:8px;overflow:hidden;margin:12px 0 4px;}
+    .prog-fill{height:100%;border-radius:4px;background:#639922;}
+    .footer{margin-top:32px;font-size:11px;color:#aaa;text-align:center;border-top:0.5px solid #eee;padding-top:12px;}
+    @media print{button{display:none !important;}}
+  </style></head><body>
+  <div style="background:#3B6D11;color:white;padding:12px 20px;border-radius:10px;margin-bottom:20px;font-size:13px;font-weight:500;">ORTO · Scheda coltura</div>
+  <div style="display:flex;align-items:center;gap:16px;margin-bottom:20px;">
+    ${iconHtml}
+    <div><h1>${esc(v.tipo)}</h1><div class="sub">${v.famiglia||''} ${v.specie?'· '+v.specie:''}</div></div>
+  </div>
+  <table>
+    ${secTitle('Informazioni pianta')}
+    ${row('Famiglia',v.famiglia)}${row('Specie',v.specie)}
+    ${row('Provenienza',v.provenienza)}${row('Produttore',v.produttore)}
+    ${row('Vivaio',v.vivaio)}${row('Codice prodotto',v.codice)}
+    ${row('Data acquisto',fd(v.acquisto))}${row('N° piantine',v.npiantine)}
+    ${row('Data trapianto',fd(v.data))}${row('Tempo raccolta',v.vegeta?v.vegeta+' gg':null)}
+    ${row('Previsione raccolta',fd(r))}
+    ${row('Inizio raccolta',fd(v.inizioRaccolta))}${row('Fine raccolta',fd(v.fineRaccolta))}
+    ${row('Kg raccolti',v.kgRaccolti)}${row('Prezzo Kg GDO',v.prezzoKg)}
+    ${secTitle('Dimora')}
+    ${row('Box',v.box)}${row('Fila',v.fila)}
+    ${row('Mq box',v.mqBox)}${row('Posizione',v.pos)}
+    ${row('Consociazioni',v.consociazioni)}${row('Colt. precedente',v.coltPrec)}
+    ${row('Periodo riposo',v.periodoRiposo)}${row('Telo nero',v.teloNero)}
+    ${row('Aggiunta compost',v.compost)}
+  </table>
+  <div class="prog-bar"><div class="prog-fill" style="width:${p}%;"></div></div>
+  <div style="text-align:right;font-size:11px;color:#888;margin-bottom:16px;">${p}% del ciclo completato</div>
+  ${v.note?`<div style="background:#f5f5f5;border-radius:8px;padding:10px 12px;font-size:13px;color:#444;margin-bottom:20px;">${esc(v.note)}</div>`:''}
+  <table>
+    ${secTitle('Diario di bordo')}
+    ${diaryRows}
+  </table>
+  <div class="footer">Generato il ${new Date().toLocaleDateString('it-IT')} · Il mio orto</div>
+  <br><button onclick="window.print()" style="display:block;margin:0 auto;padding:10px 32px;background:#3B6D11;color:white;border:none;border-radius:8px;font-size:14px;cursor:pointer;">🖨 Stampa / Salva PDF</button>
+  <script>window.onload=function(){window.print();}<\/script>
+  </body></html>`;
+  const win=window.open('','_blank');
+  if(win){
+    win.document.open();
+    win.document.write(html);
+    win.document.close();
+  } else {
+    // Fallback: se il popup è bloccato, scarica come file HTML
+    const blob=new Blob([html],{type:'text/html;charset=utf-8'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a');
+    a.href=url; a.download='scheda-'+nomeSenza(v.tipo).replace(/\s+/g,'-').toLowerCase()+'.html';
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a);
+    setTimeout(()=>URL.revokeObjectURL(url),3000);
+    alert('Pop-up bloccato dal browser. Il file è stato scaricato — aprilo e stampa da lì.');
+  }
+}
+
+function switchTab(tab){
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+tab).classList.add('active');
+  const tabs=['orto','gantt','storia','annate','mappa'];
+  document.querySelectorAll('.nav button')[tabs.indexOf(tab)].classList.add('active');
+  if(tab==='gantt')   renderGantt();
+  if(tab==='annate')  renderAnnate();
+  if(tab==='storia')  renderStoria();
+  if(tab==='mappa')   renderMappa();
+}
+
+// ── MAPPA (placeholder) ──
+function renderMappa(){
+  document.getElementById('mappa-content').innerHTML=`
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;padding:60px 24px;text-align:center;gap:16px;">
+      <div style="font-size:52px;">🗺️</div>
+      <div style="font-size:18px;font-weight:600;color:#111;">Mappa dell'orto</div>
+      <div style="font-size:14px;color:#888;line-height:1.6;max-width:280px;">
+        Questa sezione è in costruzione.<br>
+        Presto potrai disegnare il layout del tuo orto,
+        posizionare le piante e visualizzare i box.
+      </div>
+      <div style="margin-top:8px;background:#EAF3DE;border-radius:10px;padding:12px 16px;font-size:13px;color:#3B6D11;font-weight:500;">
+        🌱 In arrivo nella prossima versione
+      </div>
+    </div>`;
+}
+
+// ── ANNATE ──
+function renderAnnate(){
+  const container=document.getElementById('annate-content');
+  if(!veggies.length){
+    container.innerHTML='<p style="color:#888;font-size:14px;text-align:center;padding:40px 0;">Nessun ortaggio ancora.<br>Aggiungine uno dalla scheda Orto!</p>';
+    return;
+  }
+
+  // Raggruppa per anno di semina
+  const byYear={};
+  veggies.forEach(v=>{
+    if(!v.data) return;
+    const year=v.data.split('-')[0];
+    if(!byYear[year]) byYear[year]=[];
+    byYear[year].push(v);
+  });
+
+  // Ordina anni dal più recente
+  const years=Object.keys(byYear).sort((a,b)=>b-a);
+  const sl={germoglio:'Germoglio',crescita:'In crescita',raccolta:'Pronta'};
+
+  container.innerHTML=years.map(year=>{
+    const list=byYear[year].sort((a,b)=>a.data>b.data?1:-1);
+    const rows=list.map(v=>{
+      const r=gr(v),s=stato(v),d=df(r),p=prog(v.data,r);
+      const ih=v.iconFoto?`<img src="${v.iconFoto}" style="width:32px;height:32px;object-fit:cover;border-radius:50%;">`:(v.coverFoto?`<img src="${v.coverFoto}" style="width:32px;height:32px;object-fit:cover;border-radius:50%;">`:`<span style="font-size:18px;">${emj(v.tipo)}</span>`);
+      return `<div style="display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:0.5px solid #eee;cursor:pointer;" onclick="goToDetail(${v.id})">
+        <div style="width:36px;height:36px;border-radius:50%;background:#EAF3DE;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden;">${ih}</div>
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:14px;font-weight:500;color:#111;">${esc(nomeSenza(v.tipo)||v.tipo)}</div>
+          <div style="font-size:11px;color:#888;margin-top:1px;">
+            Trapianto: ${fd(v.data)}${r?' · Raccolta: '+fd(r):''}
+          </div>
+          <div style="margin-top:5px;background:#f0f0f0;border-radius:3px;height:4px;overflow:hidden;">
+            <div style="height:100%;border-radius:3px;background:#639922;width:${p}%;"></div>
+          </div>
+        </div>
+        <span class="veggie-status status-${s}" style="flex-shrink:0;">${sl[s]}</span>
+      </div>`;
+    }).join('');
+
+    return `<div style="margin-bottom:20px;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px;">
+        <div style="font-size:18px;font-weight:700;color:#3B6D11;">📅 ${year}</div>
+        <div style="font-size:12px;color:#888;">${list.length} ortagg${list.length===1?'io':'i'}</div>
+      </div>
+      <div style="border-left:3px solid #EAF3DE;padding-left:12px;">
+        ${rows}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function goToDetail(id){
+  // Torna alla tab orto e apre il dettaglio
+  switchTab('orto');
+  openDetail(id);
+}
+
+// ── STORIA A CAPITOLI ──
+function newCapId(){return 'c'+Date.now();}
+
+function renderStoria(){
+  storiaEditCap=null;
+  const caps=storia.capitoli||[];
+  const totFoto=caps.reduce((s,c)=>s+(c.photos||[]).length,0);
+
+  const capHtml=caps.map((c,ci)=>{
+    const thumbs=(c.photos||[]).map((f,fi)=>`
+      <div class="storia-photo-thumb" onclick="openLb('${f}','${esc(c.titolo)}')">
+        <img src="${f}" alt="foto">
+        <button class="storia-photo-del" onclick="event.stopPropagation();delCapPhoto(${ci},${fi})">×</button>
+      </div>`).join('');
+    return `
+    <div class="storia-cap" id="scap-${c.id}">
+      <!-- numero capitolo + azioni -->
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+        <div style="font-size:10px;font-weight:700;color:#3B6D11;text-transform:uppercase;letter-spacing:.06em;background:#EAF3DE;padding:3px 8px;border-radius:20px;">Capitolo ${ci+1}</div>
+        <div style="margin-left:auto;display:flex;gap:6px;">
+          ${ci>0?`<button onclick="moveCapSu(${ci})" title="Sposta su" style="background:none;border:0.5px solid #ddd;border-radius:6px;width:26px;height:26px;cursor:pointer;font-size:13px;">↑</button>`:''}
+          ${ci<caps.length-1?`<button onclick="moveCapGiu(${ci})" title="Sposta giù" style="background:none;border:0.5px solid #ddd;border-radius:6px;width:26px;height:26px;cursor:pointer;font-size:13px;">↓</button>`:''}
+          <button onclick="editCap('${c.id}')" title="Modifica" style="background:none;border:0.5px solid #ddd;border-radius:6px;width:26px;height:26px;cursor:pointer;font-size:12px;color:#3B6D11;"><i class="ti ti-pencil"></i></button>
+          <button onclick="delCap('${c.id}')" title="Elimina capitolo" style="background:none;border:0.5px solid #ddd;border-radius:6px;width:26px;height:26px;cursor:pointer;font-size:12px;color:#A32D2D;"><i class="ti ti-trash"></i></button>
+        </div>
+      </div>
+      <!-- titolo -->
+      <div style="font-size:17px;font-weight:600;color:#111;margin-bottom:8px;">${esc(c.titolo)}</div>
+      <!-- testo -->
+      ${c.testo?`<div style="font-size:14px;color:#333;line-height:1.65;margin-bottom:12px;white-space:pre-wrap;">${esc(c.testo)}</div>`:''}
+      <!-- foto -->
+      ${thumbs?`<div class="storia-photo-grid" style="margin-bottom:8px;">${thumbs}</div>`:''}
+      <!-- aggiungi foto al capitolo -->
+      <div style="display:flex;gap:6px;margin-bottom:4px;">
+        <div class="storia-add-btn" style="font-size:10px;">
+          <i class="ti ti-camera"></i><span>Fotocamera</span>
+          <input type="file" accept="image/*" capture="environment" onchange="addCapPhoto(event,'${c.id}')">
+        </div>
+        <div class="storia-add-btn" style="font-size:10px;">
+          <i class="ti ti-photo"></i><span>Galleria</span>
+          <input type="file" accept="image/*" multiple onchange="addCapPhoto(event,'${c.id}')">
+        </div>
+        ${(c.photos||[]).length>0?`
+        <button onclick="openIgModal(${JSON.stringify(c.photos||[]).replace(/"/g,'&quot;')},'${esc(c.titolo)}')"
+          style="flex:1;border:0.5px solid #E1306C;border-radius:8px;background:#fff0f5;color:#E1306C;font-size:11px;font-family:inherit;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:4px;padding:0 8px;">
+          <i class="ti ti-brand-instagram"></i> Post IG
+        </button>`:''}
+      </div>
+    </div>`;
+  }).join('<div style="height:1px;background:#eee;margin:16px 0;"></div>');
+
+  document.getElementById('storia-view').innerHTML=`
+    <!-- TITOLO STORIA -->
+    <div style="margin-bottom:18px;">
+      <div id="storia-titolo-disp"
+           style="font-size:20px;font-weight:700;color:#111;cursor:pointer;padding:6px 8px;border-radius:8px;border:1px solid transparent;display:flex;align-items:center;gap:6px;"
+           onclick="enStoriaTitolo()"
+           onmouseenter="this.style.background='#f9f9f9';this.style.borderColor='#ccc'"
+           onmouseleave="this.style.background='';this.style.borderColor='transparent'">
+        📖 ${esc(storia.titolo)}
+        <i class="ti ti-pencil" style="font-size:12px;color:#3B6D11;opacity:.4;margin-left:auto;"></i>
+      </div>
+      <input id="storia-titolo-inp"
+             value="${esc(storia.titolo)}"
+             style="font-size:17px;font-weight:700;font-family:inherit;border:1.5px solid #3B6D11;border-radius:8px;padding:6px 10px;width:100%;display:none;box-sizing:border-box;"
+             onkeydown="if(event.key==='Enter')svStoriaTitolo();if(event.key==='Escape')cnStoriaTitolo()"
+             placeholder="Titolo della storia…">
+      <div id="storia-titolo-btns" style="display:none;gap:6px;margin-top:5px;">
+        <button onclick="cnStoriaTitolo()" style="padding:5px 14px;border-radius:8px;border:0.5px solid #ddd;background:#f5f5f5;color:#666;cursor:pointer;font-family:inherit;font-size:12px;">Annulla</button>
+        <button onclick="svStoriaTitolo()" style="padding:5px 14px;border-radius:8px;border:none;background:#3B6D11;color:white;cursor:pointer;font-family:inherit;font-size:12px;">✓ Salva</button>
+      </div>
+    </div>
+
+    <!-- CAPITOLI -->
+    <div id="storia-caps">${caps.length?capHtml:'<p style="color:#aaa;font-size:14px;text-align:center;padding:24px 0;">Nessun capitolo ancora.<br>Aggiungi il primo con il tasto qui sotto!</p>'}</div>
+
+    <!-- AGGIUNGI CAPITOLO -->
+    <button onclick="addCap()" style="width:100%;margin-top:12px;padding:10px;background:#3B6D11;color:white;border:none;border-radius:10px;font-size:14px;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px;">
+      <i class="ti ti-plus"></i> Aggiungi capitolo
+    </button>
+
+    ${totFoto>0?`
+    <div class="ig-banner" style="margin-top:14px;" onclick="openIgModal(null,storia.titolo)">
+      <i class="ti ti-brand-instagram"></i>
+      <div>
+        <div class="ig-banner-text">Genera post Instagram</div>
+        <div class="ig-banner-sub">Tutte le foto della storia (${totFoto} foto)</div>
+      </div>
+      <i class="ti ti-chevron-right" style="margin-left:auto;opacity:.7;"></i>
+    </div>`:''}
+  `;
+}
+
+// ── Modifica capitolo — modale inline ──
+function addCap(){
+  storia.capitoli.push({id:newCapId(),titolo:'Nuovo capitolo',testo:'',photos:[]});
+  saveStoria();
+  renderStoria();
+  // apri subito in editing l'ultimo
+  editCap(storia.capitoli[storia.capitoli.length-1].id);
+}
+
+function editCap(cid){
+  const c=storia.capitoli.find(x=>x.id===cid);
+  if(!c) return;
+  storiaEditCap=cid;
+  const el=document.getElementById('scap-'+cid);
+  if(!el) return;
+  el.innerHTML=`
+    <div style="display:flex;align-items:center;gap:6px;margin-bottom:10px;">
+      <div style="font-size:10px;font-weight:700;color:#3B6D11;text-transform:uppercase;background:#EAF3DE;padding:3px 8px;border-radius:20px;">Modifica capitolo</div>
+    </div>
+    <div style="margin-bottom:8px;">
+      <label style="font-size:11px;color:#888;display:block;margin-bottom:3px;">Titolo</label>
+      <input id="ecap-titolo" type="text" value="${esc(c.titolo)}"
+             style="width:100%;padding:7px 10px;border:1.5px solid #3B6D11;border-radius:8px;font-size:14px;font-weight:600;font-family:inherit;box-sizing:border-box;">
+    </div>
+    <div style="margin-bottom:10px;">
+      <label style="font-size:11px;color:#888;display:block;margin-bottom:3px;">Testo</label>
+      <textarea id="ecap-testo"
+                style="width:100%;padding:8px 10px;border:1.5px solid #3B6D11;border-radius:8px;font-size:14px;font-family:inherit;resize:none;min-height:120px;box-sizing:border-box;"
+                placeholder="Scrivi il testo di questo capitolo…">${esc(c.testo||'')}</textarea>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:4px;">
+      <button onclick="svCap('${cid}')" style="flex:2;padding:9px;background:#3B6D11;color:white;border:none;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer;font-family:inherit;">✓ Salva</button>
+      <button onclick="renderStoria()" style="flex:1;padding:9px;background:#f5f5f5;color:#666;border:0.5px solid #ddd;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit;">Annulla</button>
+      <button onclick="renderStoria();setTimeout(()=>delCap('${cid}'),50)" title="Elimina capitolo" style="padding:9px 11px;background:#FCEBEB;color:#A32D2D;border:0.5px solid #f5c6cb;border-radius:8px;font-size:14px;cursor:pointer;"><i class="ti ti-trash"></i></button>
+    </div>`;
+  document.getElementById('ecap-titolo').focus();
+}
+
+function svCap(cid){
+  const c=storia.capitoli.find(x=>x.id===cid);
+  if(!c) return;
+  c.titolo=document.getElementById('ecap-titolo').value.trim()||'Senza titolo';
+  c.testo=document.getElementById('ecap-testo').value.trim();
+  saveStoria(); renderStoria();
+}
+
+function delCap(cid){
+  // Usa un pannello inline invece di confirm() — più affidabile su mobile
+  const el=document.getElementById('scap-'+cid);
+  if(!el) return;
+  const c=storia.capitoli.find(x=>x.id===cid);
+  const nome=c?esc(c.titolo):'questo capitolo';
+  // Inserisce un banner di conferma in cima al capitolo
+  const existing=document.getElementById('del-confirm-'+cid);
+  if(existing){existing.remove();return;}
+  const banner=document.createElement('div');
+  banner.id='del-confirm-'+cid;
+  banner.style.cssText='background:#FCEBEB;border:1px solid #f5c6cb;border-radius:10px;padding:12px 14px;margin-bottom:12px;';
+  banner.innerHTML=`
+    <div style="font-size:13px;color:#A32D2D;font-weight:500;margin-bottom:8px;">
+      🗑 Eliminare "<b>${nome}</b>"?<br>
+      <span style="font-size:11px;font-weight:400;">Anche le foto del capitolo verranno eliminate.</span>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button onclick="confirmDelCap('${cid}')"
+              style="flex:1;padding:8px;background:#A32D2D;color:white;border:none;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;font-family:inherit;">
+        Sì, elimina
+      </button>
+      <button onclick="document.getElementById('del-confirm-${cid}').remove()"
+              style="flex:1;padding:8px;background:#f5f5f5;color:#666;border:0.5px solid #ddd;border-radius:8px;font-size:13px;cursor:pointer;font-family:inherit;">
+        Annulla
+      </button>
+    </div>`;
+  el.insertBefore(banner, el.firstChild);
+  banner.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+function confirmDelCap(cid){
+  storia.capitoli=storia.capitoli.filter(x=>x.id!==cid);
+  saveStoria(); renderStoria();
+}
+
+function moveCapSu(idx){
+  if(idx<=0) return;
+  [storia.capitoli[idx-1],storia.capitoli[idx]]=[storia.capitoli[idx],storia.capitoli[idx-1]];
+  saveStoria(); renderStoria();
+}
+function moveCapGiu(idx){
+  if(idx>=storia.capitoli.length-1) return;
+  [storia.capitoli[idx+1],storia.capitoli[idx]]=[storia.capitoli[idx],storia.capitoli[idx+1]];
+  saveStoria(); renderStoria();
+}
+
+function addCapPhoto(e,cid){
+  const files=[...e.target.files]; if(!files.length) return;
+  const c=storia.capitoli.find(x=>x.id===cid); if(!c) return;
+  if(!c.photos) c.photos=[];
+  let done=0,newPh=[];
+  files.forEach(f=>{
+    const r=new FileReader();
+    r.onload=ev=>{
+      newPh.push(ev.target.result);
+      if(++done===files.length){
+        c.photos=[...c.photos,...newPh];
+        saveStoria(); renderStoria();
+        openIgModal(newPh, c.titolo);
+      }
+    };
+    r.readAsDataURL(f);
+  });
+}
+function delCapPhoto(ci,fi){
+  if(!confirm('Rimuovere questa foto?')) return;
+  storia.capitoli[ci].photos.splice(fi,1);
+  saveStoria(); renderStoria();
+}
+
+// titolo storia (invariato)
+function enStoriaTitolo(){
+  document.getElementById('storia-titolo-disp').style.display='none';
+  const inp=document.getElementById('storia-titolo-inp');
+  inp.style.display='block'; inp.focus(); inp.select();
+  document.getElementById('storia-titolo-btns').style.display='flex';
+}
+function svStoriaTitolo(){
+  const val=document.getElementById('storia-titolo-inp').value.trim();
+  if(val) storia.titolo=val;
+  saveStoria(); renderStoria();
+}
+function cnStoriaTitolo(){
+  document.getElementById('storia-titolo-inp').style.display='none';
+  document.getElementById('storia-titolo-btns').style.display='none';
+  document.getElementById('storia-titolo-disp').style.display='flex';
+}
+
+// ── INSTAGRAM MODAL ──
+let igPhotosForPost=[];
+
+function openIgModal(photos, capTitoloOrId){
+  // photos: array di dataUrl, oppure null (usa tutte le foto della storia)
+  // capTitoloOrId: titolo stringa oppure id capitolo
+  if(photos && Array.isArray(photos)){
+    igPhotosForPost=photos;
+  } else {
+    // tutte le foto di tutti i capitoli
+    igPhotosForPost=(storia.capitoli||[]).flatMap(c=>c.photos||[]);
+  }
+  document.getElementById('ig-photos-preview').innerHTML=
+    igPhotosForPost.slice(0,6).map(f=>`<img src="${f}" style="width:56px;height:56px;object-fit:cover;border-radius:6px;">`).join('')
+    +(igPhotosForPost.length>6?`<span style="font-size:11px;color:#888;align-self:center;"> +${igPhotosForPost.length-6} foto</span>`:'');
+  document.getElementById('ig-text').value='Generazione in corso…';
+  document.getElementById('ig-modal-bg').classList.add('open');
+  generateIgPost(typeof capTitoloOrId==='string'?capTitoloOrId:'');
+}
+function closeIgModal(){document.getElementById('ig-modal-bg').classList.remove('open');}
+
+function generateIgPost(soggetto){
+  const ortaggi=veggies.map(v=>v.tipo).join(', ')||'ortaggi vari';
+  const nFoto=igPhotosForPost.length;
+  const stagione=()=>{const m=oggi.getMonth();if(m>=2&&m<=4)return'primavera';if(m>=5&&m<=7)return'estate';if(m>=8&&m<=10)return'autunno';return'inverno';};
+  const sog=soggetto?`"${soggetto}" — `:'';
+  const templates=[
+    `🌱 ${sog}Dal mio orto di ${stagione()}!\n\nOggi coltivo: ${ortaggi}.\n\nC'è qualcosa di magico nel vedere la terra trasformarsi in nutrimento. ${nFoto>1?`Queste ${nFoto} foto raccontano il viaggio. `:''}Ogni giorno un piccolo miracolo verde 🍃\n\n#orto #ortobio #giardinaggio #coltivazione #terrazza #ortocasalingo #greenlife #homegrown #ortaggi #semina #raccolta`,
+    `🥬 ${sog}Aggiornamento dall'orto!\n\nIn coltivazione: ${ortaggi}.\n\nColtivare il proprio cibo è un atto d'amore verso sé stessi e il pianeta 💚 Niente di più soddisfacente che raccogliere quello che hai seminato con le tue mani!\n\n#orto #coltivare #homegrown #giardinaggio #verdura #sostenibile #bio #ortourbano`,
+    `☀️ ${sog}${stagione().charAt(0).toUpperCase()+stagione().slice(1)} nell'orto!\n\nOggi con me: ${ortaggi}.\n\nLa pazienza del giardiniere viene sempre ricompensata 🌿 Ogni foglia, ogni frutto è il risultato di cure quotidiane e tanto amore.\n\n#ortoincasa #homegarden #coltivazione #bio #verdura #natura #giardinaggio #semina #green`,
+  ];
+  document.getElementById('ig-text').value=templates[Math.floor(Math.random()*templates.length)];
+}
+
+function copyIgPost(){
+  const txt=document.getElementById('ig-text').value;
+  navigator.clipboard.writeText(txt).then(()=>{
+    const btn=document.querySelector('#ig-modal-bg .btn-save');
+    btn.textContent='✓ Copiato!';btn.style.background='#3B6D11';
+    setTimeout(()=>{btn.innerHTML='<i class="ti ti-copy"></i> Copia testo';btn.style.background='#E1306C';},2000);
+  }).catch(()=>{document.getElementById('ig-text').select();document.execCommand('copy');});
+}
+</script>
+<div id="save-toast" style="position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(10px);background:rgba(40,40,40,.92);color:white;font-size:13px;padding:8px 18px;border-radius:20px;opacity:0;transition:opacity .3s,transform .3s;pointer-events:none;z-index:999;white-space:nowrap;"><i class="ti ti-device-floppy" style="font-size:14px;vertical-align:-2px;margin-right:5px;"></i> Salvato</div>
+</body></html>
