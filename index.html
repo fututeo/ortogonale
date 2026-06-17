@@ -272,6 +272,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <option value="🍆 Melanzana"><option value="🌿 Basilico"><option value="🥦 Broccolo">
         <option value="🧄 Aglio"><option value="🫘 Fagiolo"><option value="🌽 Mais"><option value="🍓 Fragola">
         <option value="🌿 Spinacio"><option value="🥗 Rucola"><option value="🫛 Pisello">
+        <option value="🥔 Patata">
+        <option value="🥒 Cetriolo">
+        <option value="🫙 Carosello Barattiere">
+        <option value="🥗 Insalata">
+        <option value="🍈 Melone">
+        <option value="🍉 Anguria">
+        <option value="🫘 Fagiolini">
       </datalist>
     </div>
 
@@ -526,22 +533,25 @@ function showLoginScreen(show){
   }
 }
 
-// Ref Firestore per l'utente corrente
-function userDoc(name){ return fbDb.collection('utenti').doc(fbUid).collection('dati').doc(name); }
+// ── Spazio condiviso: tutti gli utenti autenticati leggono/scrivono
+//    nello stesso documento, non più separato per UID.
+//    Cambia 'orto-condiviso' se vuoi un nome diverso per il tuo orto.
+const SHARED_SPACE='orto-condiviso';
+function userDoc(name){ return fbDb.collection('condivisi').doc(SHARED_SPACE).collection('dati').doc(name); }
 
 async function fbSave(name,data){
-  if(!fbReady||!fbUid) return false;
+  if(!fbReady) return false;
   try{
     // Firestore ha limite 1MB per documento — salviamo in chunk se serve
     const json=JSON.stringify(data);
     if(json.length<900000){
-      await userDoc(name).set({payload:json,ts:Date.now()});
+      await userDoc(name).set({payload:json,ts:Date.now(),lastEditor:fbUid||'anon'});
     } else {
       // spezza in chunk da 800KB
       const chunks=[];
       for(let i=0;i<json.length;i+=800000) chunks.push(json.slice(i,i+800000));
       const batch=fbDb.batch();
-      batch.set(userDoc(name),{chunks:chunks.length,ts:Date.now()});
+      batch.set(userDoc(name),{chunks:chunks.length,ts:Date.now(),lastEditor:fbUid||'anon'});
       chunks.forEach((c,i)=>batch.set(userDoc(name+`_chunk${i}`),{data:c}));
       await batch.commit();
     }
@@ -550,7 +560,7 @@ async function fbSave(name,data){
 }
 
 async function fbLoad(name){
-  if(!fbReady||!fbUid) return null;
+  if(!fbReady) return null;
   try{
     const doc=await userDoc(name).get();
     if(!doc.exists) return null;
