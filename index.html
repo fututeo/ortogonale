@@ -437,15 +437,16 @@ const DEMO=[
 //     Le tue app → </> → firebaseConfig
 // ══════════════════════════════════════════════════
 const firebaseConfig = {
-  apiKey: "AIzaSyDYIe40mfqqbCoPgTJPBaC36LUGA_7wPGQ",
-  authDomain: "ortogonale-5e01f.firebaseapp.com",
-  projectId: "ortogonale-5e01f",
-  storageBucket: "ortogonale-5e01f.firebasestorage.app",
-  messagingSenderId: "901336476111",
-  appId: "1:901336476111:web:2090475e029dec597ecaba"
+  apiKey:            "INSERISCI-QUI-LA-TUA-apiKey",
+  authDomain:        "INSERISCI-QUI.firebaseapp.com",
+  projectId:         "INSERISCI-QUI-IL-TUO-projectId",
+  storageBucket:     "INSERISCI-QUI.appspot.com",
+  messagingSenderId: "INSERISCI-QUI",
+  appId:             "INSERISCI-QUI"
 };
+
 // ── Firebase SDK (caricato da CDN) ──
-let fbApp=null, fbDb=null, fbAuth=null, fbUid=null;
+let fbApp=null, fbDb=null, fbAuth=null, fbUid=null, fbStorage=null;
 let fbReady=false;
 
 function initFirebase(){
@@ -454,6 +455,7 @@ function initFirebase(){
     load('https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js')
     .then(()=>load('https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js'))
     .then(()=>load('https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js'))
+    .then(()=>load('https://www.gstatic.com/firebasejs/10.12.0/firebase-storage-compat.js'))
     .then(async()=>{
       try{
         if(firebaseConfig.apiKey.startsWith('INSERISCI')){
@@ -465,6 +467,7 @@ function initFirebase(){
         // Persiste la sessione anche dopo chiusura browser
         await fbAuth.setPersistence(firebase.auth.Auth.Persistence.LOCAL);
         fbDb=firebase.firestore();
+        fbStorage=firebase.storage();
 
         // Ascolta i cambiamenti di stato auth
         fbAuth.onAuthStateChanged(async user=>{
@@ -473,9 +476,14 @@ function initFirebase(){
             fbReady=true;
             showLoginScreen(false);
             showSyncBadge(true, user.displayName||user.email||'Connesso');
-            // Carica i dati dal cloud per questo utente
+            // Carica i dati dal cloud per questo utente (con protezione anti-sovrascrittura)
             await syncFromCloud();
+            // Aggiorna la vista corrente con i dati eventualmente arrivati dal cloud
             renderVeggies();
+            const activeTab=document.querySelector('.section.active')?.id?.replace('tab-','');
+            if(activeTab==='storia') renderStoria();
+            if(activeTab==='annate') renderAnnate();
+            if(activeTab==='gantt') renderGantt();
           } else {
             fbUid=null;
             fbReady=false;
@@ -539,6 +547,70 @@ function showLoginScreen(show){
 const SHARED_SPACE='orto-condiviso';
 function userDoc(name){ return fbDb.collection('condivisi').doc(SHARED_SPACE).collection('dati').doc(name); }
 
+// ══════════════════════════════════════════════════
+// ── FOTO: Firebase Storage ──
+// Le foto vengono salvate come file veri in Storage,
+// non più come testo base64 dentro Firestore.
+// Se Storage non è disponibile (offline, non configurato),
+// si usa base64 come fallback automatico — l'app funziona comunque.
+// ══════════════════════════════════════════════════
+
+function genPhotoName(){
+  return SHARED_SPACE+'/'+Date.now()+'-'+Math.random().toString(36).slice(2,8)+'.jpg';
+}
+
+// Converte un File in dataURL (usato per fallback e anteprima immediata)
+function fileToDataUrl(file){
+  return new Promise((res,rej)=>{
+    const r=new FileReader();
+    r.onload=e=>res(e.target.result);
+    r.onerror=rej;
+    r.readAsDataURL(file);
+  });
+}
+
+// Upload effettivo su Firebase Storage. Ritorna l'URL pubblico,
+// oppure il dataURL base64 se Storage non è disponibile.
+async function uploadPhoto(file){
+  const dataUrl=await fileToDataUrl(file); // serve comunque per anteprima istantanea
+  if(!fbReady||!fbStorage){
+    return dataUrl; // fallback: salva come base64, come prima
+  }
+  try{
+    const path=genPhotoName();
+    const ref=fbStorage.ref().child(path);
+    await ref.putString(dataUrl,'data_url');
+    const url=await ref.getDownloadURL();
+    return url; // URL pubblico vero — leggero, scaricabile, condivisibile
+  }catch(e){
+    console.warn('Upload Storage fallito, uso base64 come fallback:',e);
+    return dataUrl;
+  }
+}
+
+// Upload multiplo — ritorna un array di URL nello stesso ordine dei file
+async function uploadPhotos(files){
+  const results=[];
+  for(const f of files){
+    const url=await uploadPhoto(f);
+    results.push(url);
+  }
+  return results;
+}
+
+// Elimina una foto da Storage (se è un URL Storage — i base64 vecchi vengono ignorati)
+async function deletePhotoFromStorage(urlOrDataUrl){
+  if(!fbReady||!fbStorage) return;
+  if(!urlOrDataUrl || !urlOrDataUrl.startsWith('https://')) return; // è un base64, niente da eliminare
+  try{
+    const ref=fbStorage.refFromURL(urlOrDataUrl);
+    await ref.delete();
+  }catch(e){
+    console.warn('Impossibile eliminare la foto da Storage (forse già rimossa):',e);
+  }
+}
+
+
 async function fbSave(name,data){
   if(!fbReady) return false;
   try{
@@ -565,14 +637,14 @@ async function fbLoad(name){
     const doc=await userDoc(name).get();
     if(!doc.exists) return null;
     const d=doc.data();
-    if(d.payload) return JSON.parse(d.payload);
+    if(d.payload) return {data:JSON.parse(d.payload), ts:d.ts||0};
     if(d.chunks){
       let full='';
       for(let i=0;i<d.chunks;i++){
         const ch=await userDoc(name+`_chunk${i}`).get();
         full+=ch.data().data;
       }
-      return JSON.parse(full);
+      return {data:JSON.parse(full), ts:d.ts||0};
     }
     return null;
   }catch(e){console.warn('fbLoad error:',e);return null;}
@@ -612,15 +684,21 @@ function idbGet(key){
 // Strategia: salva sempre in IndexedDB (veloce, locale),
 //            e in parallelo sincronizza su Firebase (cloud)
 let _savePending={};
+let _localTs={veggies:0, storia:0}; // timestamp dell'ultima modifica fatta QUI
+
 function schedSave(key){
-  // debounce 1.5s per non sovraccaricare Firebase con ogni tasto
+  // Segna subito che l'utente ha appena modificato questo dato:
+  // protegge da una sincronizzazione cloud in arrivo che potrebbe sovrascriverlo
+  _localTs[key]=Date.now();
   clearTimeout(_savePending[key]);
   _savePending[key]=setTimeout(()=>_doSave(key),1500);
 }
 
 async function _doSave(key){
   const data = key==='veggies' ? {veggies,nid,nuid} : storia;
-  try{ await idbSet(key, JSON.stringify(data)); }catch(e){}
+  const ts=Date.now();
+  _localTs[key]=ts;
+  try{ await idbSet(key, JSON.stringify({...data,_ts:ts})); }catch(e){}
   if(fbReady){ await fbSave(key, data); }
   showSaveToast();
 }
@@ -642,18 +720,34 @@ function showSyncBadge(ok, userName){
   }
 }
 
-// Carica dati dal cloud e aggiorna locale
+// Carica dati dal cloud e aggiorna locale — SOLO se il cloud è più recente
+// di qualsiasi modifica fatta localmente in questa sessione (anti-sovrascrittura)
 async function syncFromCloud(){
   try{
     const [cloudV, cloudS] = await Promise.all([fbLoad('veggies'), fbLoad('storia')]);
-    if(cloudV && cloudV.veggies){
-      veggies=cloudV.veggies;
-      nid=cloudV.nid||nid; nuid=cloudV.nuid||nuid;
-      await idbSet('veggies', JSON.stringify(cloudV));
+
+    if(cloudV && cloudV.data && cloudV.data.veggies){
+      // Applica i dati cloud solo se non abbiamo modifiche locali più recenti
+      // (o se non ci sono ancora modifiche locali in questa sessione, _localTs=0)
+      if(cloudV.ts >= _localTs.veggies){
+        veggies=cloudV.data.veggies;
+        nid=cloudV.data.nid||nid; nuid=cloudV.data.nuid||nuid;
+        await idbSet('veggies', JSON.stringify({...cloudV.data,_ts:cloudV.ts}));
+      } else {
+        // I dati locali sono più recenti del cloud: rispediamo i nostri al cloud
+        console.log('Dati locali più recenti del cloud — risincronizzo verso il cloud');
+        fbSave('veggies', {veggies,nid,nuid});
+      }
     }
-    if(cloudS){
-      storia=cloudS;
-      await idbSet('storia', JSON.stringify(cloudS));
+
+    if(cloudS && cloudS.data){
+      if(cloudS.ts >= _localTs.storia){
+        storia=cloudS.data;
+        await idbSet('storia', JSON.stringify({...cloudS.data,_ts:cloudS.ts}));
+      } else {
+        console.log('Storia locale più recente del cloud — risincronizzo verso il cloud');
+        fbSave('storia', storia);
+      }
     }
   }catch(e){ console.warn('syncFromCloud error:',e); }
 }
@@ -669,6 +763,7 @@ async function loadData(){
       const c=JSON.parse(raw);
       veggies=c.veggies||[];
       nid=c.nid||10; nuid=c.nuid||20;
+      _localTs.veggies=c._ts||0; // ricorda quando sono stati salvati localmente
       loadedLocally=true;
     }
   }catch(e){}
@@ -683,7 +778,7 @@ async function loadData(){
   }
 
   // Firebase sync viene gestito da onAuthStateChanged → syncFromCloud()
-  // Non serve sincronizzare qui
+  // syncFromCloud confronterà cloudV.ts con _localTs.veggies prima di sovrascrivere
 }
 
 async function loadStoria(){
@@ -691,7 +786,13 @@ async function loadStoria(){
   let loadedLocally=false;
   try{
     const raw=await idbGet('storia');
-    if(raw){ storia=JSON.parse(raw); loadedLocally=true; }
+    if(raw){
+      const s=JSON.parse(raw);
+      _localTs.storia=s._ts||0;
+      delete s._ts;
+      storia=s;
+      loadedLocally=true;
+    }
   }catch(e){}
 
   // 2. Migrazione da localStorage
@@ -983,17 +1084,36 @@ function cnName(id){document.getElementById('dni-'+id).style.display='none';docu
 function enPos(id){document.getElementById('dp-'+id).style.display='none';const i=document.getElementById('dpi-'+id);i.style.display='block';i.focus();i.select();}
 function svPos(id){const v=veggies.find(x=>x.id===id),val=document.getElementById('dpi-'+id).value.trim();if(val)v.pos=val;renderVeggies();openDetail(id);saveData();}
 function cnPos(id){document.getElementById('dpi-'+id).style.display='none';document.getElementById('dp-'+id).style.display='flex';}
-function changeIcon(e,id){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{veggies.find(x=>x.id===id).iconFoto=ev.target.result;renderVeggies();openDetail(id);saveData();};r.readAsDataURL(f);}
-function changeCover(e,id){const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev=>{veggies.find(x=>x.id===id).coverFoto=ev.target.result;renderVeggies();openDetail(id);saveData();};r.readAsDataURL(f);}
-function addSchPhoto(e,id){
-  const fs=[...e.target.files];if(!fs.length)return;
+async function changeIcon(e,id){
+  const f=e.target.files[0]; if(!f) return;
   const v=veggies.find(x=>x.id===id);
-  if(!v.photos)v.photos=[];
-  let done=0;
-  fs.forEach(f=>{const r=new FileReader();r.onload=ev=>{v.photos.push(ev.target.result);if(++done===fs.length){openDetail(id);saveData();}};r.readAsDataURL(f);});
+  const oldUrl=v.iconFoto;
+  const url=await uploadPhoto(f);
+  v.iconFoto=url;
+  renderVeggies(); openDetail(id); saveData();
+  if(oldUrl) deletePhotoFromStorage(oldUrl);
+}
+async function changeCover(e,id){
+  const f=e.target.files[0]; if(!f) return;
+  const v=veggies.find(x=>x.id===id);
+  const oldUrl=v.coverFoto;
+  const url=await uploadPhoto(f);
+  v.coverFoto=url;
+  renderVeggies(); openDetail(id); saveData();
+  if(oldUrl) deletePhotoFromStorage(oldUrl);
+}
+async function addSchPhoto(e,id){
+  const fs=[...e.target.files]; if(!fs.length) return;
+  const v=veggies.find(x=>x.id===id);
+  if(!v.photos) v.photos=[];
+  const urls=await uploadPhotos(fs);
+  v.photos.push(...urls);
+  openDetail(id); saveData();
 }
 function delSchPhoto(id,idx){
   const v=veggies.find(x=>x.id===id);
+  const url=v.photos[idx];
+  if(url) deletePhotoFromStorage(url);
   v.photos.splice(idx,1);
   openDetail(id);saveData();
 }
@@ -1024,8 +1144,13 @@ function enEdit(vid,uid){
   document.getElementById('ui-'+uid).innerHTML=`<div class="edit-panel"><div class="field"><label>Data</label><input type="date" id="ed-${uid}" value="${u.iso}"></div><div class="field"><label>Testo</label><textarea id="et-${uid}">${esc(u.t)}</textarea></div><div class="field"><label>Foto</label><div class="edit-photos-grid" id="eg-${uid}">${epHtml(uid)}</div><div class="add-photo-row"><div class="add-photo-btn"><i class="ti ti-camera"></i> Fotocamera<input type="file" accept="image/*" capture="environment" onchange="addEP(event,'${uid}')"></div><div class="add-photo-btn"><i class="ti ti-photo"></i> Galleria<input type="file" accept="image/*" multiple onchange="addEP(event,'${uid}')"></div></div></div><div class="edit-panel-btns"><button style="background:#f5f5f5;color:#666;border:0.5px solid #ddd;" onclick="cnEdit(${vid},'${uid}')">Annulla</button><button style="background:#3B6D11;color:white;" onclick="svEdit(${vid},'${uid}')">Salva</button></div></div>`;
 }
 function epHtml(uid){return editPh.map((f,i)=>`<div class="edit-photo-wrap"><img src="${f}" alt=""><button class="edit-photo-del" onclick="rmEP(${i},'${uid}')">×</button></div>`).join('');}
-function rmEP(i,uid){editPh.splice(i,1);document.getElementById('eg-'+uid).innerHTML=epHtml(uid);}
-function addEP(e,uid){const fs=[...e.target.files];let d=0;fs.forEach(f=>{const r=new FileReader();r.onload=ev=>{editPh.push(ev.target.result);if(++d===fs.length)document.getElementById('eg-'+uid).innerHTML=epHtml(uid);};r.readAsDataURL(f);});}
+function rmEP(i,uid){const url=editPh[i];if(url)deletePhotoFromStorage(url);editPh.splice(i,1);document.getElementById('eg-'+uid).innerHTML=epHtml(uid);}
+async function addEP(e,uid){
+  const fs=[...e.target.files]; if(!fs.length) return;
+  const urls=await uploadPhotos(fs);
+  editPh.push(...urls);
+  document.getElementById('eg-'+uid).innerHTML=epHtml(uid);
+}
 function svEdit(vid,uid){
   vid=parseInt(vid); uid=String(uid);
   const v=veggies.find(x=>x.id===vid),u=v.updates.find(x=>x.id===uid);
@@ -1049,6 +1174,8 @@ function delU(vid,uid){
   if(!confirm('Eliminare questo aggiornamento dal diario?'))return;
   const v=veggies.find(x=>x.id===vid);
   if(!v){console.warn('veggie not found',vid);return;}
+  const u=v.updates.find(x=>String(x.id)===uid);
+  if(u && u.fotos) u.fotos.forEach(url=>deletePhotoFromStorage(url));
   v.updates=v.updates.filter(x=>String(x.id)!==uid);
   editUid=null;
   // Remove the DOM element directly — avoids full re-render issues
@@ -1061,14 +1188,29 @@ function delU(vid,uid){
   }
   saveData();
 }
-function addPP(e){const fs=[...e.target.files];let d=0;fs.forEach(f=>{const r=new FileReader();r.onload=ev=>{pendPh.push(ev.target.result);if(++d===fs.length)renderPP();};r.readAsDataURL(f);});}
+async function addPP(e){
+  const fs=[...e.target.files]; if(!fs.length) return;
+  const urls=await uploadPhotos(fs);
+  pendPh.push(...urls);
+  renderPP();
+}
 function renderPP(){document.getElementById('pending-preview').innerHTML=pendPh.map((f,i)=>`<div class="preview-wrap"><img src="${f}" alt=""><button class="preview-del" onclick="rmPP(${i})">×</button></div>`).join('');}
-function rmPP(i){pendPh.splice(i,1);renderPP();}
+function rmPP(i){const url=pendPh[i];if(url)deletePhotoFromStorage(url);pendPh.splice(i,1);renderPP();}
 function openUM(id){curDetail=id;pendPh=[];document.getElementById('upd-data').value=isoToday;document.getElementById('upd-note').value='';document.getElementById('pending-preview').innerHTML='';document.getElementById('update-modal-bg').classList.add('open');}
 function closeUpdateModal(){document.getElementById('update-modal-bg').classList.remove('open');}
 function saveUpdate(){const tx=document.getElementById('upd-note').value.trim(),iso=document.getElementById('upd-data').value||isoToday;if(!tx&&!pendPh.length){alert('Inserisci almeno una nota o una foto.');return;}const v=veggies.find(x=>x.id===curDetail);v.updates.push({id:'u'+nuid++,d:fd(iso),iso,t:tx||'Foto aggiunta',fotos:[...pendPh]});v.updates.sort((a,b)=>a.iso>b.iso?1:-1);closeUpdateModal();openDetail(curDetail);saveData();}
 function closeDetail(){document.getElementById('list-view').style.display='block';document.getElementById('detail-view').style.display='none';curDetail=null;editUid=null;editPh=[];}
-function delV(id){if(!confirm('Vuoi eliminare questo ortaggio?'))return;veggies=veggies.filter(x=>x.id!==id);closeDetail();renderVeggies();saveData();}
+function delV(id){
+  if(!confirm('Vuoi eliminare questo ortaggio?'))return;
+  const v=veggies.find(x=>x.id===id);
+  if(v){
+    if(v.iconFoto) deletePhotoFromStorage(v.iconFoto);
+    if(v.coverFoto) deletePhotoFromStorage(v.coverFoto);
+    (v.photos||[]).forEach(url=>deletePhotoFromStorage(url));
+    (v.updates||[]).forEach(u=>(u.fotos||[]).forEach(url=>deletePhotoFromStorage(url)));
+  }
+  veggies=veggies.filter(x=>x.id!==id);closeDetail();renderVeggies();saveData();
+}
 function openLb(src,cap){document.getElementById('lightbox-img').src=src;document.getElementById('lightbox-cap').textContent=cap;document.getElementById('lightbox').classList.add('open');}
 function closeLightbox(){document.getElementById('lightbox').classList.remove('open');}
 function openModal(){
@@ -1468,6 +1610,8 @@ function delCap(cid){
 }
 
 function confirmDelCap(cid){
+  const c=storia.capitoli.find(x=>x.id===cid);
+  if(c && c.photos) c.photos.forEach(url=>deletePhotoFromStorage(url));
   storia.capitoli=storia.capitoli.filter(x=>x.id!==cid);
   saveStoria(); renderStoria();
 }
@@ -1483,27 +1627,21 @@ function moveCapGiu(idx){
   saveStoria(); renderStoria();
 }
 
-function addCapPhoto(e,cid){
+async function addCapPhoto(e,cid){
   const files=[...e.target.files]; if(!files.length) return;
   const c=storia.capitoli.find(x=>x.id===cid); if(!c) return;
   if(!c.photos) c.photos=[];
-  let done=0,newPh=[];
-  files.forEach(f=>{
-    const r=new FileReader();
-    r.onload=ev=>{
-      newPh.push(ev.target.result);
-      if(++done===files.length){
-        c.photos=[...c.photos,...newPh];
-        saveStoria(); renderStoria();
-        openIgModal(newPh, c.titolo);
-      }
-    };
-    r.readAsDataURL(f);
-  });
+  const newPh=await uploadPhotos(files);
+  c.photos=[...c.photos,...newPh];
+  saveStoria(); renderStoria();
+  openIgModal(newPh, c.titolo);
 }
 function delCapPhoto(ci,fi){
   if(!confirm('Rimuovere questa foto?')) return;
-  storia.capitoli[ci].photos.splice(fi,1);
+  const cap=storia.capitoli[ci];
+  const url=cap.photos[fi];
+  if(url) deletePhotoFromStorage(url);
+  cap.photos.splice(fi,1);
   saveStoria(); renderStoria();
 }
 
