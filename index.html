@@ -437,13 +437,14 @@ const DEMO=[
 //     Le tue app → </> → firebaseConfig
 // ══════════════════════════════════════════════════
 const firebaseConfig = {
-  apiKey: "AIza...",
-  authDomain: "ortogonale-xxx.firebaseapp.com",
-  projectId: "ortogonale-xxx",
-  storageBucket: "ortogonale-xxx.appspot.com",
-  messagingSenderId: "123456789",
-  appId: "1:123456789:web:abc123"
+  apiKey: "AIzaSyDYIe40mfqqbCoPgTJPBaC36LUGA_7wPGQ",
+  authDomain: "ortogonale-5e01f.firebaseapp.com",
+  projectId: "ortogonale-5e01f",
+  storageBucket: "ortogonale-5e01f.firebasestorage.app",
+  messagingSenderId: "901336476111",
+  appId: "1:901336476111:web:2090475e029dec597ecaba"
 };
+
 // ── Firebase SDK (caricato da CDN) ──
 let fbApp=null, fbDb=null, fbAuth=null, fbUid=null, fbStorage=null;
 let fbReady=false;
@@ -468,8 +469,34 @@ function initFirebase(){
         fbDb=firebase.firestore();
         fbStorage=firebase.storage();
 
+        // ── IMPORTANTE: completa il login se l'utente è appena tornato
+        // da un redirect Google (signInWithRedirect). Senza questa chiamata
+        // il login con redirect non si conclude mai e la pagina resta
+        // bloccata sulla schermata di accesso, anche dopo il redirect.
+        try{
+          const redirectResult = await fbAuth.getRedirectResult();
+          if(redirectResult && redirectResult.user){
+            console.log('Login completato via redirect:', redirectResult.user.email);
+          }
+        }catch(redirectErr){
+          console.warn('Errore nel completare il login redirect:', redirectErr.code, redirectErr.message);
+          showLoginError(traduciErroreFirebase(redirectErr));
+        }
+
+        // Timeout di sicurezza: se onAuthStateChanged non scatta in 8 secondi
+        // (es. rete lentissima, problema di configurazione), mostriamo
+        // un messaggio invece di lasciare l'utente bloccato senza spiegazioni
+        let authResolved=false;
+        setTimeout(()=>{
+          if(!authResolved && document.getElementById('login-overlay')){
+            showLoginError('Il login sta impiegando troppo tempo. Controlla la connessione e riprova, oppure verifica che il dominio sia autorizzato su Firebase (Authentication → Settings → Authorized domains).');
+          }
+        }, 8000);
+
         // Ascolta i cambiamenti di stato auth
         fbAuth.onAuthStateChanged(async user=>{
+          authResolved=true;
+          hideLoginError();
           if(user){
             fbUid=user.uid;
             fbReady=true;
@@ -500,11 +527,73 @@ function initFirebase(){
 }
 
 function loginGoogle(){
+  hideLoginError();
   const provider=new firebase.auth.GoogleAuthProvider();
-  fbAuth.signInWithPopup(provider).catch(e=>{
-    // Su mobile signInWithPopup può essere bloccato — usa redirect
-    fbAuth.signInWithRedirect(provider);
-  });
+  // Mostra un piccolo stato di caricamento sul tasto
+  const btn=document.querySelector('#login-overlay button[onclick="loginGoogle()"]');
+  if(btn){ btn.disabled=true; btn.style.opacity='0.6'; }
+
+  fbAuth.signInWithPopup(provider)
+    .then(result=>{
+      console.log('Login popup riuscito:', result.user.email);
+      // onAuthStateChanged gestirà il resto
+    })
+    .catch(err=>{
+      console.warn('Popup login error:', err.code, err.message);
+      // Solo per errori TIPICI di popup bloccato/non supportato, proviamo il redirect.
+      // Altri errori (account-exists, network, ecc.) li mostriamo direttamente:
+      // un redirect automatico nasconderebbe l'errore reale e causerebbe loop.
+      const popupBlockedCodes=[
+        'auth/popup-blocked',
+        'auth/popup-closed-by-user',
+        'auth/cancelled-popup-request',
+        'auth/operation-not-supported-in-this-environment'
+      ];
+      if(popupBlockedCodes.includes(err.code)){
+        if(err.code==='auth/popup-closed-by-user'||err.code==='auth/cancelled-popup-request'){
+          // L'utente ha chiuso il popup volontariamente — non forzare il redirect
+          if(btn){ btn.disabled=false; btn.style.opacity='1'; }
+          return;
+        }
+        // Popup davvero bloccato dal browser → redirect è l'unica via
+        fbAuth.signInWithRedirect(provider).catch(e2=>{
+          showLoginError(traduciErroreFirebase(e2));
+          if(btn){ btn.disabled=false; btn.style.opacity='1'; }
+        });
+      } else {
+        showLoginError(traduciErroreFirebase(err));
+        if(btn){ btn.disabled=false; btn.style.opacity='1'; }
+      }
+    });
+}
+
+function traduciErroreFirebase(err){
+  const code=err?.code||'';
+  const map={
+    'auth/unauthorized-domain':'Questo indirizzo web non è autorizzato su Firebase. Vai su Firebase Console → Authentication → Settings → Authorized domains e aggiungi il dominio di questa pagina.',
+    'auth/network-request-failed':'Problema di connessione internet. Controlla la rete e riprova.',
+    'auth/popup-blocked':'Il browser ha bloccato la finestra di login. Consenti i popup per questo sito e riprova.',
+    'auth/operation-not-allowed':'Il login con Google non è abilitato su Firebase. Vai su Authentication → Sign-in method → Google e abilitalo.',
+    'auth/internal-error':'Errore interno di Firebase. Riprova in qualche secondo.',
+    'auth/too-many-requests':'Troppi tentativi di accesso. Aspetta qualche minuto e riprova.',
+  };
+  return map[code] || ('Errore di accesso: '+(err?.message||code||'sconosciuto'));
+}
+
+function showLoginError(msg){
+  let box=document.getElementById('login-error-box');
+  if(!box){
+    box=document.createElement('div');
+    box.id='login-error-box';
+    box.style.cssText='margin-top:16px;background:#FCEBEB;border:1px solid #f5c6cb;border-radius:10px;padding:12px 14px;font-size:12px;color:#A32D2D;max-width:280px;line-height:1.5;text-align:left;';
+    const overlay=document.getElementById('login-overlay');
+    if(overlay) overlay.appendChild(box);
+  }
+  box.textContent='⚠️ '+msg;
+}
+function hideLoginError(){
+  const box=document.getElementById('login-error-box');
+  if(box) box.remove();
 }
 
 function logout(){
